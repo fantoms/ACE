@@ -4,11 +4,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading;
-
-using ACE.Network;
-using ACE.Entity;
-using ACE.Common;
 using System.Threading.Tasks;
+
+using ACE.Common;
+using ACE.Entity;
+using ACE.Network;
 
 namespace ACE.Managers
 {
@@ -27,7 +27,7 @@ namespace ACE.Managers
 
         public static DerethDateTime WorldStartFromTime { get; } = new DerethDateTime().UTCNowToLoreTime;
 
-        public static double PortalYearTicks { get; set; } = WorldStartFromTime.Ticks;
+        public static double PortalYearTicks { get; private set; } = WorldStartFromTime.Ticks;
 
         public static void Initialise()
         {
@@ -197,6 +197,7 @@ namespace ACE.Managers
                 }
 
                 Thread.Sleep(1);
+
                 lastTick = (double)worldTickTimer.ElapsedTicks / Stopwatch.Frequency;
                 PortalYearTicks += lastTick;
             }
