@@ -41,6 +41,12 @@ namespace ACE.Entity
             set { propertiesBool[PropertyBool.IsPsr] = value; }
         }
 
+        public bool IsAdvocate
+        {
+            get { return PropertiesBool[PropertyBool.IsAdvocate]; }
+            set { propertiesBool[PropertyBool.IsAdvocate] = value; }
+        }
+
         public uint Heritage
         {
             get { return propertiesInt[PropertyInt.HeritageGroup]; }

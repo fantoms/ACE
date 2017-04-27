@@ -10,6 +10,11 @@ namespace ACE.Entity.Enum
     public enum GroupChatType
     {
         /// <summary>
+        /// Undefined Value to check against
+        /// </summary>
+        Undef               = 0x00000000,
+
+        /// <summary>
         /// @abuse - Abuse Channel
         /// </summary>
         TellAbuse           = 0x00000001,

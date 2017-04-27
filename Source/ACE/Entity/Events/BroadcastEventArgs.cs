@@ -24,7 +24,7 @@ namespace ACE.Entity.Events
             };
         }
 
-        public static BroadcastEventArgs CreateChatAction(WorldObject sender, ChatMessageArgs chatMessage)
+        public static BroadcastEventArgs CreateLocalChatAction(WorldObject sender, ChatMessageArgs chatMessage)
         {
             return new BroadcastEventArgs()
             {

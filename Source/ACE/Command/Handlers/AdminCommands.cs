@@ -285,11 +285,10 @@ namespace ACE.Command.Handlers
                         bootText = "Player: " + session.Player.Name + " has booted " + bootText;
                         if (session != playerSession)
                             session.Network.EnqueueSend(new GameMessageSystemChat(bootText, ChatMessageType.Broadcast));
+                        // Alert the Audit Chat channel
                     }
                     else
-                    {
                         bootText = "Console booted " + bootText;
-                    }
 
                     // log the boot to file
                     ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
@@ -316,13 +315,14 @@ namespace ACE.Command.Handlers
             string errorText = $"Error locating the player or account to boot.";
             // Send the error to a player or the console
             if (session != null)
-            {
                 session.Network.EnqueueSend(new GameMessageSystemChat(errorText, ChatMessageType.Broadcast));
-            } else
-            {
+            else
                 Console.WriteLine(errorText);
+<<<<<<< a430bc03859f3856131e35451c36ff34f5165743
             }
 >>>>>>> * Updated usage text to redundant 'boot boot {' text and changed to allow for console access.
+=======
+>>>>>>> * Chat changes to support boot messages on the audit channel
         }
 
         // cloak < on / off / player / creature >
