@@ -7,10 +7,14 @@ using ACE.Network.GameMessages.Messages;
 using ACE.Common;
 using ACE.Database;
 using ACE.Network.Enum;
+<<<<<<< 75eded7587563d7549fe14c5eca1fdd3b1b4fc37
 using ACE.DatLoader.FileTypes;
 using ACE.Factories;
 
 using log4net;
+=======
+using System.Collections.Generic;
+>>>>>>> Further expending group chat
 
 namespace ACE.Command.Handlers
 {
@@ -93,12 +97,18 @@ namespace ACE.Command.Handlers
         /// <summary>
         /// Boots the Player or Account holder from the server and displays the CoC Violation Warning
         /// </summary>
+<<<<<<< 75eded7587563d7549fe14c5eca1fdd3b1b4fc37
         /// <remarks>
         ///     TODO: 1. After the group messages are operational, Send out a message on the Audit Group Chat Channel and alert other admins of this command usage.
         /// </remarks>
         [CommandHandler("boot", AccessLevel.Sentinel, CommandHandlerFlag.None, 2,
             "Boots the Player or Account holder from the server and displays the CoC Violation Warning",
             "{ account | char | iid } who")]
+=======
+        [CommandHandler("boot", AccessLevel.Sentinel, CommandHandlerFlag.RequiresWorld, 1, 
+            "Boots the Player or Account holder from the server and displays the CoC Violation Warning",
+            "boot { account | char | iid } who")]
+>>>>>>> Further expending group chat
         public static void HandleBoot(Session session, params string[] parameters)
         {
             // usage: @boot { account, char, iid} who
@@ -127,6 +137,7 @@ namespace ACE.Command.Handlers
                 }
             }
 
+<<<<<<< 75eded7587563d7549fe14c5eca1fdd3b1b4fc37
             // Peform logic
             if (selectorType != AccountLookupType.Undef)
             {
@@ -187,16 +198,104 @@ namespace ACE.Command.Handlers
 
                     // finish execution of command logic
                     return;
+=======
+            // lame checks on first parameter
+            if (parameters?.Length > 0)
+            {
+                // if parameters are greater then 1, we may have a space in a character name
+                if (parameters.Length > 1)
+                {
+                    // The first parameter may be only text
+                    // The second paramater may also be a number or text, but the logic depends on the text from the first parameter.
+                    // Examples: 
+                    //   1. @boot char <CharacterName>
+                    //   2. @boot account <AccontName>
+                    //   3. @boot iid <CharacterId/Guid>
+                    AccountLookupType selectorType = AccountLookupType.Undef;
+                    string bootName = "";
+                    uint bootId = 0;
+                    Session playerSession = null;
+
+                    // Loop through the AccountLookupEnum to attempt at matching the first parameter with a lookup type
+                    foreach (string bootType in System.Enum.GetNames(typeof(AccountLookupType)))
+                    {
+                        // Check the FIRST character of the first parameter against the Enum dictionary
+                        // If the first character matches (a,c,i) then the selector will be returned.
+                        // This allows for users to type @boot char <name>, since char is a keyword in c#
+                        // Switch case to Lower when matching
+                        if (parameters[0].ToLower()[0] == bootType.ToLower()[0])
+                        {
+                            // If found, selectorType will hold the correct AccoutLookupType
+                            if (Enum.TryParse(bootType, out selectorType))
+                            {
+                                // reaching this scope means we were successful, so we can stop looping:
+                                break;
+                            }
+                        }
+                    }
+
+                    // Peform logic
+                    if (selectorType != AccountLookupType.Undef)
+                    {
+                        // Extract the name from the parameters
+                        if (selectorType == AccountLookupType.Account || selectorType == AccountLookupType.Character)
+                        {
+                            // Get the first name
+                            bootName = Common.Extensions.CharacterNameExtensions.StringArrayToCharacterName(parameters, 1);
+                        }
+
+                        switch (selectorType)
+                        {
+                            case AccountLookupType.Account:
+                                {
+                                    playerSession = WorldManager.Find(bootName);
+                                    bootId = playerSession.Player.Guid.Low;
+                                    break;
+                                }
+                            case AccountLookupType.Character:
+                                {
+                                    playerSession = WorldManager.FindByPlayerName(bootName);
+                                    bootId = playerSession.Player.Guid.Low;
+                                    break;
+                                }
+                            case AccountLookupType.Iid:
+                                {
+                                    // Extract the Id from the parameters
+                                    uint.TryParse(parameters[1], out bootId);
+                                    playerSession = WorldManager.Find(new ObjectGuid(bootId));
+                                    bootName = playerSession.Player.Name;
+                                    break;
+                                }
+                        }
+
+                        if (playerSession != null)
+                        {
+                            // Boot the player
+                            playerSession.BootPlayer();
+                            
+                            // Send an update to the admin, but prevent sending too if the admin was the player being booted
+                            if (session != playerSession)
+                                session.Network.EnqueueSend(new GameMessageSystemChat($"Account or player booted: {bootName} guid: {bootId}", ChatMessageType.Broadcast));
+
+                            // finish execution of command logic
+                            return;
+                        }
+                    } 
+>>>>>>> Further expending group chat
                 }
             }
 
             // Did not find a player
+<<<<<<< 75eded7587563d7549fe14c5eca1fdd3b1b4fc37
             string errorText = $"Error locating the player or account to boot.";
             // Send the error to a player or the console
             if (session != null)
                 session.Network.EnqueueSend(new GameMessageSystemChat(errorText, ChatMessageType.Broadcast));
             else
                 Console.WriteLine(errorText);
+=======
+            session.Network.EnqueueSend(new GameMessageSystemChat($"Error locating the player or account.", ChatMessageType.Broadcast));
+>>>>>>> Further expending group chat
         }
 
         // cloak < on / off / player / creature >
