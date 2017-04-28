@@ -9,18 +9,23 @@ namespace ACE.Managers
     {
         private static readonly object chatMutex = new object();
 
-        private static bool HasPermission(Session session, GroupChatType chatType)
+        /// <summary>
+        /// Determines if the current session has access to a specific group chat channel.
+        /// </summary>
+        private static bool HasPermission(Session session, ChannelChatType chatType)
         {
+            // Check the Character.AvailablChannels to see if the channel is available
+            // If the channel is available, do a final user permission check, to make sure the player has the same group access
             return true;
         }
 
-        public static void PerformGroupChat(Session session, GroupChatType groupChatType, string message)
+        public static void PerformGroupChat(Session session, ChannelChatType groupChatType, string message)
         {
             lock (chatMutex)
             {
                 switch (groupChatType)
                 {
-                    case GroupChatType.TellAbuse:
+                    case ChannelChatType.TellAbuse:
                         {
                             // TODO: Proper permissions check. This command should work for any character with AccessLevel.Advocate or higher
                             // if (!session.Player.IsAdmin)
@@ -37,7 +42,7 @@ namespace ACE.Managers
                             }
                         }
                         break;
-                    case GroupChatType.TellAdmin:
+                    case ChannelChatType.TellAdmin:
                         {
                             if (!session.Player.IsAdmin)
                                 break;
@@ -51,7 +56,7 @@ namespace ACE.Managers
                             // NetworkManager.SendWorldMessage(recipient, gameMessageSystemChat);
                         }
                         break;
-                    case GroupChatType.TellAudit:
+                    case ChannelChatType.TellAudit:
                         {
                             // TODO: Proper permissions check. This command should work for any character AccessLevel.Sentinel or higher
                             // if (!session.Player.IsAdmin)
@@ -66,7 +71,7 @@ namespace ACE.Managers
                                         recipient.Network.EnqueueSend(new GameEventChannelBroadcast(recipient, groupChatType, "", message));
                         }
                         break;
-                    case GroupChatType.TellAdvocate:
+                    case ChannelChatType.TellAdvocate:
                         {
                             // TODO: Proper permissions check. This command should work for any character AccessLevel.Advocate or higher
                             // if (!session.Player.IsAdmin)
@@ -80,7 +85,7 @@ namespace ACE.Managers
                                     recipient.Network.EnqueueSend(new GameEventChannelBroadcast(recipient, groupChatType, "", message));
                         }
                         break;
-                    case GroupChatType.TellAdvocate2:
+                    case ChannelChatType.TellAdvocate2:
                         {
                             // TODO: Proper permissions check. This command should work for any character AccessLevel.Advocate or higher
                             // if (!session.Player.IsAdmin)
@@ -94,7 +99,7 @@ namespace ACE.Managers
                                     recipient.Network.EnqueueSend(new GameEventChannelBroadcast(recipient, groupChatType, "", message));
                         }
                         break;
-                    case GroupChatType.TellAdvocate3:
+                    case ChannelChatType.TellAdvocate3:
                         {
                             // TODO: Proper permissions check. This command should work for any character AccessLevel.Advocate or higher
                             // if (!session.Player.IsAdmin)
@@ -108,7 +113,7 @@ namespace ACE.Managers
                                     recipient.Network.EnqueueSend(new GameEventChannelBroadcast(recipient, groupChatType, "", message));
                         }
                         break;
-                    case GroupChatType.TellSentinel:
+                    case ChannelChatType.TellSentinel:
                         {
                             // TODO: Proper permissions check. This command should work for any character with AccessLevel.Sentinel or higher
                             // if (!session.Player.IsAdmin)
@@ -122,7 +127,7 @@ namespace ACE.Managers
                                     recipient.Network.EnqueueSend(new GameEventChannelBroadcast(recipient, groupChatType, "", message));
                         }
                         break;
-                    case GroupChatType.TellHelp:
+                    case ChannelChatType.TellHelp:
                         {
                             ChatPacket.SendServerMessage(session, "GameActionChatChannel TellHelp Needs work.", ChatMessageType.Broadcast);
                             // TODO: I don't remember exactly how this was triggered. I don't think it sent back a "You say" message to the person who triggered it
@@ -130,7 +135,7 @@ namespace ACE.Managers
                             //      which would be Advocates and above.
                             // if (!session.Player.IsAdmin)
                             //    break;
-                            string onTheWhatChannel = "on the " + System.Enum.GetName(typeof(GroupChatType), groupChatType).Replace("Tell", "") + " channel";
+                            string onTheWhatChannel = "on the " + System.Enum.GetName(typeof(ChannelChatType), groupChatType).Replace("Tell", "") + " channel";
                             string whoSays = session.Player.Name + " says ";
 
                             // ChatPacket.SendServerMessage(session, $"You say {onTheWhatChannel}, \"{message}\"", ChatMessageType.OutgoingHelpSay);
@@ -153,7 +158,7 @@ namespace ACE.Managers
                         }
                         break;
 
-                    case GroupChatType.TellFellowship:
+                    case ChannelChatType.TellFellowship:
                         {
                             var statusMessage = new GameEventDisplayStatusMessage(session, StatusMessageType1.YouDoNotBelongToAFellowship);
                             session.Network.EnqueueSend(statusMessage);
@@ -162,31 +167,31 @@ namespace ACE.Managers
                         }
                         break;
 
-                    case GroupChatType.TellVassals:
+                    case ChannelChatType.TellVassals:
                         {
                             ChatPacket.SendServerMessage(session, "GameActionChatChannel TellVassals Needs work.", ChatMessageType.Broadcast);
                         }
                         break;
 
-                    case GroupChatType.TellPatron:
+                    case ChannelChatType.TellPatron:
                         {
                             ChatPacket.SendServerMessage(session, "GameActionChatChannel TellPatron Needs work.", ChatMessageType.Broadcast);
                         }
                         break;
 
-                    case GroupChatType.TellMonarch:
+                    case ChannelChatType.TellMonarch:
                         {
                             ChatPacket.SendServerMessage(session, "GameActionChatChannel TellMonarch Needs work.", ChatMessageType.Broadcast);
                         }
                         break;
 
-                    case GroupChatType.TellCoVassals:
+                    case ChannelChatType.TellCoVassals:
                         {
                             ChatPacket.SendServerMessage(session, "GameActionChatChannel TellCoVassals Needs work.", ChatMessageType.Broadcast);
                         }
                         break;
 
-                    case GroupChatType.AllegianceBroadcast:
+                    case ChannelChatType.AllegianceBroadcast:
                         {
                             // The client knows if we're in an allegiance or not, and will throw an error to the user if they try to /a, and no message will be dispatched to the server.
 

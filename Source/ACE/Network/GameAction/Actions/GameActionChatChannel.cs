@@ -1,3 +1,4 @@
+<<<<<<< 3e37c02d79d59be6762f2644c6ea8ecfd7ca7dc6
 <<<<<<< a430bc03859f3856131e35451c36ff34f5165743
 ﻿using System;
 
@@ -220,3 +221,27 @@ namespace ACE.Network.GameAction.Actions
     }
 }
 >>>>>>> * Chat changes to support boot messages on the audit channel
+=======
+﻿using System;
+
+using ACE.Common.Extensions;
+using ACE.Entity.Enum;
+using ACE.Managers;
+using ACE.Network.GameEvent.Events;
+using ACE.Network.GameMessages;
+using ACE.Network.Managers;
+
+namespace ACE.Network.GameAction.Actions
+{
+    public static class GameActionChatChannel
+    {
+        [GameAction(GameActionType.ChatChannel)]
+        public static void Handle(ClientMessage clientMessage, Session session)
+        {
+            var groupChatType = (ChannelChatType)clientMessage.Payload.ReadUInt32();
+            var message = clientMessage.Payload.ReadString16L();
+            ChatManager.PerformGroupChat(session, groupChatType, message);
+        }
+    }
+}
+>>>>>>> Changed groupChatType to ChatChannelType and added society values

@@ -9,16 +9,16 @@ namespace ACE.Entity.Events
 
         public ChatMessageType MessageType { get; set; }
 
-        public GroupChatType Channel { get; private set; }
+        public ChannelChatType Channel { get; private set; }
 
         public ChatMessageArgs(string message, ChatMessageType type)
         {
             this.Message = message;
             this.MessageType = type;
-            this.Channel = GroupChatType.Undef;
+            this.Channel = ChannelChatType.Undef;
         }
 
-        public ChatMessageArgs(string message, ChatMessageType type, GroupChatType channel)
+        public ChatMessageArgs(string message, ChatMessageType type, ChannelChatType channel)
         {
             this.Message = message;
             this.MessageType = type;

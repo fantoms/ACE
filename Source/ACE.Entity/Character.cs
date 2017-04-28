@@ -47,6 +47,12 @@ namespace ACE.Entity
             set { propertiesBool[PropertyBool.IsAdvocate] = value; }
         }
 
+        public bool IsSentinel
+        {
+            get { return PropertiesBool[PropertyBool.IsSentinel]; }
+            set { propertiesBool[PropertyBool.IsSentinel] = value; }
+        }
+
         public uint Heritage
         {
             get { return propertiesInt[PropertyInt.HeritageGroup]; }
@@ -106,6 +112,16 @@ namespace ACE.Entity
         private Dictionary<PositionType, Position> positions;
 
         public ReadOnlyDictionary<PositionType, Position> Positions { get; }
+
+        public ulong ChannelsAllowed
+        {
+            get { return propertiesInt[PropertyInt.ChannelsAllowed]; }
+        }
+
+        public ulong ChannelsActive
+        {
+            get { return propertiesInt[PropertyInt.ChannelsActive]; }
+        }
 
         public ulong AvailableExperience
         {
