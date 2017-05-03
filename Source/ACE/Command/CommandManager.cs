@@ -51,9 +51,7 @@ namespace ACE.Command
 
         private static void CommandThread()
         {
-            Console.WriteLine("");
-            Console.WriteLine("ACEmulator command prompt ready.");
-            Console.WriteLine("");
+            Console.WriteLine("\nACEmulator command prompt ready.\n\n\t- Enter `acecommands` for a listing of available server commands.\n");
 
             for (;;)
             {

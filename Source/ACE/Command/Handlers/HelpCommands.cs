@@ -26,7 +26,14 @@ namespace ACE.Command.Handlers
                 }
                 else
                 {
-                    // TODO: ACEHELP output for console
+                    // The console will always have a null session, but connected accounts should always have one.
+                    if (session == null)
+                    {
+                        Console.WriteLine("Available help:");
+                        Console.WriteLine("\tacehelp commands - Lists all commands.");
+                        Console.WriteLine("\tYou can also use acecommands to get a complete list of the supported ACEmulator commands available to you.");
+                        Console.WriteLine("\tTo get more information about a specific command, use acehelp command");
+                    }
                 }
                 return;
             }
@@ -55,7 +62,7 @@ namespace ACE.Command.Handlers
                     if (command.Attribute.Flags == CommandHandlerFlag.RequiresWorld)
                         continue;
                     Console.WriteLine($"{command.Attribute.Command} - {command.Attribute.Description}");
-                    Console.WriteLine($"Usage: {command.Attribute.Command} {command.Attribute.Usage}");
+                    Console.WriteLine($"\tUsage: {command.Attribute.Command} {command.Attribute.Usage}");
 
                     return;
                 }
@@ -68,7 +75,8 @@ namespace ACE.Command.Handlers
                 session.Network.EnqueueSend(new GameMessageSystemChat("To get more information about a specific command, use @acehelp command", ChatMessageType.Broadcast));
             }
             else
-                Console.WriteLine($"Unknown command: {parameters[0]}");
+                if (parameters[0].Length > 2)
+                    Console.WriteLine($"Unknown command: {parameters[0]}");
 
             return;
         }
@@ -115,7 +123,7 @@ namespace ACE.Command.Handlers
                 if (session != null)
                     session.Network.EnqueueSend(new GameMessageSystemChat(message, ChatMessageType.Broadcast));
                 else
-                    Console.WriteLine(message);
+                    Console.WriteLine("\t" + message);
             }
         }
     }
