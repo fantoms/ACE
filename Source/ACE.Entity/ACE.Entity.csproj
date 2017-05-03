@@ -114,7 +114,7 @@
     <Compile Include="Enum\ChatFilterMask.cs" />
     <Compile Include="Enum\ChatMessageType.cs" />
     <Compile Include="Enum\EnumHelper.cs" />
-    <Compile Include="Enum\GroupChatType.cs" />
+    <Compile Include="Enum\ChatChannelType.cs" />
     <Compile Include="Enum\LifestoneType.cs" />
     <Compile Include="Enum\MapScope.cs" />
     <Compile Include="Enum\ObjectBehaviorFlag.cs" />

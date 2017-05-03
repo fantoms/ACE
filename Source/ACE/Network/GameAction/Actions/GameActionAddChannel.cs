@@ -9,7 +9,7 @@ namespace ACE.Network.GameAction.Actions
         [GameAction(GameActionType.AddChannel)]
         public static void Handle(ClientMessage message, Session session)
         {
-            var chatChannelID = (GroupChatType)message.Payload.ReadUInt32();
+            var chatChannelID = (ChannelChatType)message.Payload.ReadUInt32();
             // Probably need some IsAdvocate and IsSentinel type thing going on here as well. leaving for now
             if (!session.Player.IsAdmin && !session.Player.IsArch && !session.Player.IsPsr)
                 return;

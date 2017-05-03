@@ -29,16 +29,49 @@ namespace ACE.Entity
             set { propertiesBool[PropertyBool.IsAdmin] = value; }
         }
 
+        /// <summary>
+        /// Special admin type, to be determined...
+        /// </summary>
         public bool IsArch
         {
             get { return propertiesBool[PropertyBool.IsArch]; }
             set { propertiesBool[PropertyBool.IsArch] = value; }
         }
 
+        /// <summary>
+        /// Special admin type, to be determined...
+        /// </summary>
         public bool IsPsr
         {
             get { return propertiesBool[PropertyBool.IsPsr]; }
             set { propertiesBool[PropertyBool.IsPsr] = value; }
+        }
+
+        /// <summary>
+        /// Is set true when a character has access level of Advocate
+        /// </summary>
+        public bool IsAdvocate
+        {
+            get { return PropertiesBool[PropertyBool.IsAdvocate]; }
+            set { propertiesBool[PropertyBool.IsAdvocate] = value; }
+        }
+
+        /// <summary>
+        /// Is set true when a character has access level of Sentinel or Envoy, see below
+        /// </summary>
+        public bool IsSentinel
+        {
+            get { return PropertiesBool[PropertyBool.IsSentinel]; }
+            set { propertiesBool[PropertyBool.IsSentinel] = value; }
+        }
+
+        /// <summary>
+        /// pulls from the IsSentinal bool property
+        /// </summary>
+        public bool IsEnvoy
+        {
+            get { return propertiesBool[PropertyBool.IsSentinel]; }
+            set { propertiesBool[PropertyBool.IsSentinel] = value; }
         }
 
         public uint Heritage
@@ -51,15 +84,6 @@ namespace ACE.Entity
         {
             get { return propertiesInt[PropertyInt.Gender]; }
             set { propertiesInt[PropertyInt.Gender] = value; }
-        }
-
-        /// <summary>
-        /// pulls from the IsSentinal bool property
-        /// </summary>
-        public bool IsEnvoy
-        {
-            get { return propertiesBool[PropertyBool.IsSentinel]; }
-            set { propertiesBool[PropertyBool.IsSentinel] = value; }
         }
 
         public uint Slot { get; set; }
