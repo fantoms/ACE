@@ -123,7 +123,6 @@
     <Compile Include="Models\ServerInformation.cs" />
     <Compile Include="Controllers\SubscriptionController.cs" />
     <Compile Include="Controllers\BaseController.cs" />
-    <Compile Include="Controllers\SyncController.cs" />
     <Compile Include="Models\SimpleMessage.cs" />
     <Compile Include="SwaggerConfig.cs" />
     <Compile Include="Controllers\ContentController.cs" />
