@@ -70,7 +70,7 @@ namespace ACE.Api.Common
                 HmacSecret = File.ReadAllText(path);
             }
         }
-        
+
         public static string GenerateToken(Account account, AccessLevel role, SigningCredentials credentials, int expireMinutes = 120)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -152,6 +152,7 @@ namespace ACE.Api.Common
                         roles.Add(level.ToString());
                 }
             }
+
             if (roles.Count > 0) ti.Roles = roles;
             ti.AccountGuid = Guid.Parse((string)bodyData["account_guid"]);
             ti.IssuingServer = (string)bodyData["issuing_server"];

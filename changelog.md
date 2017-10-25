@@ -1,7 +1,19 @@
 # ACEmulator Change Log
+### 2017-10-25
+[fantoms]
+* Changed an exception in AuthApi, to prevent the server from crashing on a bad account.
+* API Updates for roles in token, you should now be closer to using the correct `[AceAuthorize(AccessLevel)]` reflection with Api functions.
+ - Api will take the first subscription's accesslevel, when checking roles; this should probably be set to take the highest level. AccessLevel of Player (0) is used when a subscription is missing.
+
 ### 2017-10-24
+[OptimShi]
+* Fixed bug with Equipment Mask enum that was causing Greaves/Lower Leg Armor not to appear on character
+
 [Mogwai]
 * API Host Updates for consistency and messaging.
+* Defined and implemented Content API.
+* Started the Weenie API definition.
+* removed the old/unused web project.
 
 [Ripley]
 * @Slushnas found WebApp.Start error in ACE.AuthApi.Host: Changed ACE.Api.Startup to ACE.AuthApi.Startup to fix domain error.
