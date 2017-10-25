@@ -29,13 +29,9 @@ namespace ACE.Api.Controllers
             var account = CheckUser(request.Username, request.Password);
             if (account != null)
             {
-<<<<<<< HEAD
-                var subscription = AuthDb.GetSubscriptionByGuid(account.AccountGuid);
-                return Request.CreateResponse(HttpStatusCode.OK, new AuthResponse() { AuthToken = JwtManager.GenerateToken(account, subscription.AccessLevel, JwtManager.HmacSigning) });
-=======
                 var subscriptions = AuthDb.GetSubscriptionsByAccount(account.AccountGuid);
                 return Request.CreateResponse(HttpStatusCode.OK, new AuthResponse() { AuthToken = JwtManager.GenerateToken(account, (subscriptions.Count > 0) ? subscriptions[0].AccessLevel : Entity.Enum.AccessLevel.Player, JwtManager.HmacSigning) });
->>>>>>> dev-api-auth
+
             }
             return Request.CreateResponse(HttpStatusCode.Unauthorized, "Incorrect username or password.");
         }
