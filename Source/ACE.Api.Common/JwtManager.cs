@@ -71,11 +71,11 @@ namespace ACE.Api.Common
             }
         }
         
-        public static string GenerateToken(Account account, SigningCredentials credentials, int expireMinutes = 120)
+        public static string GenerateToken(Account account, AccessLevel role, SigningCredentials credentials, int expireMinutes = 120)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var now = DateTime.UtcNow;
-            
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
@@ -83,6 +83,7 @@ namespace ACE.Api.Common
                     new Claim("account_name", account.Name),
                     new Claim("account_guid", account.AccountGuid.ToString()),
                     new Claim("account_id", account.AccountId.ToString()),
+                    new Claim("role", role.ToString()),
                     new Claim("issuing_server", ConfigManager.Config.AuthServer.PublicUrl)
                 }),
                 TokenIssuerName = AceIssuerName,
@@ -151,7 +152,7 @@ namespace ACE.Api.Common
                         roles.Add(level.ToString());
                 }
             }
-
+            if (roles.Count > 0) ti.Roles = roles;
             ti.AccountGuid = Guid.Parse((string)bodyData["account_guid"]);
             ti.IssuingServer = (string)bodyData["issuing_server"];
 

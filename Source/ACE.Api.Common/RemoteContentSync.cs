@@ -15,11 +15,12 @@ namespace ACE.Api.Common
     /// Remote Content sync is used to download content from the Github Api.
     /// </summary>
     /// <remarks>
-    ///                     GetACEWorldMetaData();
-    ///                     GetLatestACEWorldData();
-    ///                     GetBaseSql();
-    ///                     GetAllUpdates();
-    ///                     ExtractZip();
+    /// Notes:
+    ///   GetACEWorldMetaData();
+    ///   GetLatestACEWorldData();
+    ///   GetBaseSql();
+    ///   GetAllUpdates();
+    ///   ExtractZip();
     /// </remarks>
     public static class RemoteContentSync
     {
@@ -29,40 +30,23 @@ namespace ACE.Api.Common
         private static string ApiUserAgent { get; set; } = "ACEmulator.Api";
 
         /// <summary>
-        /// Raw URL to current Authentication World SQL file(s).
-        /// </summary>
-        [DefaultValue("https://api.github.com/repositories/79078680/contents/Database/Updates/")]
-        public static string UpdatesSqlUrl { get; set; }
-
-        /// <summary>
-        /// Raw URL to current Base SQL Folder.
-        /// </summary>
-        [DefaultValue("https://api.github.com/repositories/79078680/contents/Database/Base/")]
-        public static string BaseSqlUrl { get; set; }
-
-        /// <summary>
         /// Url to download the latest version of ACE-World.
         /// </summary>
-        [DefaultValue("https://api.github.com/repos/ACEmulator/ACE-World/releases/latest")]
-        public static string WorldReleaseGithubUrl { get; set; }
+        public static string WorldGithubDownload { get; set; }
 
         /// <summary>
-        /// Url to download the latest version of ACE-World.
+        /// Filename for the ACE-World Release.
         /// </summary>
-        public static string GithubDownload { get; set; }
-
-        /// <summary>
-        /// Url to download the latest version of ACE-World.
-        /// </summary>
-        public static string GithubFilename { get; set; }
+        public static string WorldGithubFilename { get; set; }
 
         /// <summary>
         /// Creates a webClient that connects too Github and extracts relevant download metadata.
         /// </summary>
         public static bool GetACEWorldMetaData()
         {
+            var url = ConfigManager.Config.ContentServer.WorldArchiveUrl;
             // Must have a url preloaded
-            if (WorldReleaseGithubUrl?.Length > 0)
+            if (url?.Length > 0)
             {
                 // attempt to download the latest ACE-World json data
                 try
@@ -72,10 +56,10 @@ namespace ACE.Api.Common
                         WebClient w = new WebClient();
                         // Header is required for github
                         w.Headers.Add("User-Agent", ApiUserAgent);
-                        var json = JObject.Parse(w.DownloadString(WorldReleaseGithubUrl));
+                        var json = JObject.Parse(w.DownloadString(url));
                         // Extract relevant details
-                        GithubDownload = (string)json["assets"][0]["browser_download_url"];
-                        GithubFilename = (string)json["assets"][0]["name"];
+                        WorldGithubDownload = (string)json["assets"][0]["browser_download_url"];
+                        WorldGithubFilename = (string)json["assets"][0]["name"];
                     }
                 }
                 catch (Exception error)
@@ -135,6 +119,11 @@ namespace ACE.Api.Common
                 return true;
             }
             return false;
+        }
+
+        public static void RetreieveMetadata()
+        {
+            
         }
 
         /// <summary>

@@ -29,7 +29,8 @@ namespace ACE.Api.Controllers
             var account = CheckUser(request.Username, request.Password);
             if (account != null)
             {
-                return Request.CreateResponse(HttpStatusCode.OK, new AuthResponse() { AuthToken = JwtManager.GenerateToken(account, JwtManager.HmacSigning) });
+                var subscription = AuthDb.GetSubscriptionByGuid(account.AccountGuid);
+                return Request.CreateResponse(HttpStatusCode.OK, new AuthResponse() { AuthToken = JwtManager.GenerateToken(account, subscription.AccessLevel, JwtManager.HmacSigning) });
             }
             throw new HttpResponseException(HttpStatusCode.Unauthorized);
             //return Request.CreateResponse(HttpStatusCode.Unauthorized, "Incorrect username or password.");
