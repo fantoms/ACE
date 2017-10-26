@@ -1,7 +1,9 @@
 ﻿using ACE.Common;
+using ACE.Database;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.IO.Compression;
@@ -19,6 +21,8 @@ namespace ACE.Api.Common
     /// </summary>
     public static class RemoteContentSync
     {
+        private static WorldDatabase WorldDb { get; set; }
+
         /// <summary>
         /// External user agent used when connecting to the github Api, or another location.
         /// </summary>
@@ -37,17 +41,32 @@ namespace ACE.Api.Common
         /// <summary>
         /// The amount of calls left before being rate limited.
         /// </summary>
-        public static int TotalApiCallsAvailable { get; set; }
+        public static int TotalApiCallsAvailable { get; set; } = 60;
 
         /// <summary>
         /// The amount of calls left before being rate limited.
         /// </summary>
-        public static int RemaingApiCalls { get; set; }
+        public static int RemaingApiCalls { get; set; } = 60;
 
         /// <summary>
         /// The time when the Github API will accept more requests.
         /// </summary>
         public static DateTime? ApiResetTIme { get; set; } = DateTime.Today.AddYears(1);
+
+        /// <summary>
+        /// Default database names.
+        /// </summary>
+        private static readonly ReadOnlyCollection<string> DefaultDatabaseNames = new ReadOnlyCollection<string>(new[] { "ace_auth", "ace_shard", "ace_world" });
+
+        public static void Initialize()
+        {
+            WorldDb = new WorldDatabase();
+            WorldDb.Initialize(ConfigManager.Config.MySql.World.Host,
+                          ConfigManager.Config.MySql.World.Port,
+                          ConfigManager.Config.MySql.World.Username,
+                          ConfigManager.Config.MySql.World.Password,
+                          ConfigManager.Config.MySql.World.Database, false, false);
+        }
 
         /// <summary>
         /// Captures the Rate Limit Values from the Response Header
@@ -263,14 +282,15 @@ namespace ACE.Api.Common
                     return false;
                 }
                 var WordArchive = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, GithubFilename));
+
                 if (GetWebContent(GithubDownload, WordArchive))
                 {
                     // Extract & delete
                     try
                     {
-                        ZipFile.ExtractToDirectory(WordArchive, Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, "Database\\ACE-World")));
-                        File.Delete(WordArchive);
-                    } catch
+                        ExtractZip(WordArchive, Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, "Database\\ACE-World")));
+                    }
+                    catch
                     {
                         // issue with disk space, trouble extracting, or file path became invalid
                         return false;
@@ -280,6 +300,124 @@ namespace ACE.Api.Common
             }
             // No more calls left, detail the time remaining
             return false;
+        }
+
+        /// <summary>
+        /// Attempts to Load all world data present from the appropriate downloaded folder, into a name database with the name collected from the config.
+        /// </summary>
+        public static bool ReLoadWorld()
+        {
+            Initialize();
+
+            if (ConfigManager.Config.MySql.World.Database?.Length > 0 && ConfigManager.Config.ContentServer.LocalDataPath?.Length > 0)
+            {
+                var databaseName = ConfigManager.Config.MySql.World.Database;
+
+                // Delete Database, to clear everything including stored procs and views.
+                WorldDb.DropDatabase(databaseName);
+
+                // Create Database
+                WorldDb.CreateDatabase(databaseName);
+
+                // Load World Data from 3 locations, in sequential order:
+                //  First Search Path: Database\\Base\\World\\
+
+                var worldBase = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, "Database\\Base\\WorldBase.sql"));
+                if (File.Exists(worldBase))
+                    LoadScript(worldBase, databaseName);
+                else
+                    return false;
+
+                //  Second Search Path: Database\\Updates\\World\\
+                //  Third Search Path: Database\\ACE-World\\
+                var worldDataPaths = new List<string> {                    
+                    Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, "Database\\Updates\\World\\")),
+                    Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, "Database\\ACE-World\\"))
+                };
+
+                foreach (var worldUpdatePath in worldDataPaths)
+                {
+                    try
+                    {
+                        var files = from file in Directory.EnumerateFiles(worldUpdatePath) where !file.Contains(".txt") select new { File = file };
+                        if (files.Count() > 0)
+                        {
+                            foreach (var file in files)
+                            {
+                                string sqlFile = file.File;
+                                // find the base file:
+                                if (!File.Exists(sqlFile))
+                                {
+                                    //$"Cannot locate ACE-World Data, please click download!";
+                                    return false;
+                                }
+                                else
+                                {
+                                    LoadScript(file.File, databaseName);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception error)
+                    {
+                        return false;
+                    }
+                }
+                // Success
+                return true;
+            }
+            // Could not find configuration or error in function.
+            return false;
+        }
+
+        public static void LoadScript(string sqlFile, string databaseName)
+        {
+            // open fild into string
+            //"Loading ACE-World, may take quite awhile (please wait)!...";
+            string sqlInputFile = File.ReadAllText(sqlFile);
+            if (!DefaultDatabaseNames.Contains(databaseName))
+            {
+                if (DefaultDatabaseNames.Any(sqlInputFile.Contains))
+                {
+                    // Default Detabase should be ace_world:
+                    sqlInputFile = sqlInputFile.Replace(DefaultDatabaseNames[2], databaseName);
+                }
+            }
+            var result = WorldDb.ExecuteScript(sqlInputFile, databaseName);
+            if (result.Length > 0)
+            {
+                //result;
+            }
+        }
+
+        /// <summary>
+        /// Attempts to extract a file from a directory, into a relative path. If ACEManager.Config.SaveOldWorldArchives is false, then the archive will also be deleted.
+        /// </summary>
+        private static void ExtractZip(string filePath, string destinationPath)
+        {
+            // $"Extracting Zip {filePath}...";
+            if (Directory.Exists(destinationPath)) Directory.Delete(destinationPath, true);
+            Directory.CreateDirectory(destinationPath);
+            if (!File.Exists(filePath))
+            {
+                // $"ERROR: Zip missing!";
+                return;
+            }
+
+            try
+            {
+                ZipFile.ExtractToDirectory(filePath, destinationPath);
+            }
+            catch (Exception error)
+            {
+                // error.Message;
+                return;
+            }
+            finally
+            {
+                // $"Deleting archive {filePath}";
+                File.Delete(filePath);
+            }
         }
     }
 }

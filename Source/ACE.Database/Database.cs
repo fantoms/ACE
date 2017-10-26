@@ -11,6 +11,7 @@ using log4net;
 using ACE.Common;
 using ACE.Common.Extensions;
 using System.Reflection;
+using System.Data.SqlClient;
 
 namespace ACE.Database
 {
@@ -250,7 +251,7 @@ namespace ACE.Database
 
         protected virtual Type PreparedStatementType { get; }
 
-        public void Initialize(string host, uint port, string user, string password, string database, bool autoReconnect = true)
+        public void Initialize(string host, uint port, string user, string password, string database, bool autoReconnect = true, bool InitializeStatements = true)
         {
             var connectionBuilder = new MySqlConnectionStringBuilder()
             {
@@ -263,7 +264,7 @@ namespace ACE.Database
                 Pooling = true
             };
 
-            connectionString = connectionBuilder.ToString();
+            connectionString = connectionBuilder.ToString() + ";Allow User Variables=True;";
 
             for (;;)
             {
@@ -287,7 +288,7 @@ namespace ACE.Database
                 }
             }
 
-            InitializePreparedStatements();
+            if(InitializeStatements) InitializePreparedStatements();
         }
 
         public DatabaseTransaction BeginTransaction() { return new DatabaseTransaction(this); }
@@ -1150,6 +1151,187 @@ namespace ACE.Database
                     }
                 }
             }
+        }
+
+        public static int GetExceptionNumber(MySqlException my)
+        {
+            if (my != null)
+            {
+                int number = my.Number;
+                // if the number is zero, try to get the number of the inner exception
+                if (number == 0 && (my = my.InnerException as MySqlException) != null)
+                {
+                    number = my.Number;
+                }
+                return number;
+            }
+            return -1;
+        }
+
+        public string ExecuteQuery(string query, string databaseName)
+        {
+            var result = "";
+            try
+            {
+                result = RunQuery(query, databaseName);
+            }
+            catch (SqlException ex)
+            {
+                var errMsg = $"SQL Error in the downloaded data: {ex.Message}";
+#if DEBUG
+                Console.WriteLine(errMsg);
+#endif
+                return errMsg;
+            }
+            catch (MySqlException ex)
+            {
+                var errMsg = "Error: ";
+                // get the number from the inner exception
+                if (ex.InnerException != null)
+                {
+                    var MySqlErrorNumber = GetExceptionNumber(ex);
+                    // create a short error message for the console log / label
+                    errMsg += $"{MySqlErrorNumber} : {ex.InnerException.Message}";
+                }
+                else
+                {
+                    errMsg += $"{ex.Message}";
+                }
+#if DEBUG
+                // long message to console
+                Console.WriteLine(errMsg);
+#endif
+                return errMsg;
+            }
+            catch (Exception e)
+            {
+                var errMsg = $"Error: {e.Message}";
+#if DEBUG
+                Console.WriteLine(errMsg);
+#endif
+                return errMsg;
+            }
+            return $"{result}";
+        }
+
+
+        public string ExecuteScript(string script, string databaseName)
+        {
+            var result = "";
+            try
+            {
+                result = RunScript(script, databaseName);
+            }
+            catch (SqlException ex)
+            {
+                var errMsg = $"SQL Error in the downloaded data: {ex.Message}";
+#if DEBUG
+                Console.WriteLine(errMsg);
+#endif
+                return errMsg;
+            }
+            catch (MySqlException ex)
+            {
+                var errMsg = "Error";
+                // get the number from the inner exception
+                if (ex.InnerException != null)
+                {
+                    var MySqlErrorNumber = GetExceptionNumber(ex);
+                    // create a short error message for the console log / label
+                    errMsg += $"{MySqlErrorNumber} : {ex.InnerException.Message}";
+                }
+                else
+                {
+                    errMsg += $"{ex.Message}";
+                }
+#if DEBUG
+                // long message to console
+                Console.WriteLine(errMsg);
+#endif
+                return errMsg;
+            }
+            catch (Exception e)
+            {
+                var errMsg = $"Error: {e.Message}";
+#if DEBUG
+                Console.WriteLine(errMsg);
+#endif
+                return errMsg;
+            }
+            return $"{result}";
+        }
+
+        private string RunQuery(string query, string databaseName)
+        {
+            var resultString = "";
+            var dbConnectionString = "";
+            if (databaseName.Length == 0 )
+            {
+                dbConnectionString = connectionString.Replace("database=ace_world;", string.Empty);
+            }
+            using (MySqlConnection connection = new MySqlConnection(dbConnectionString))
+            using (MySqlCommand command = connection.CreateCommand())
+            {
+                connection.Open();
+                command.CommandText = query;
+                MySqlDataReader reader = command.ExecuteReader();
+                resultString += $"Affected Rows: {reader.RecordsAffected}";
+                connection.Close();
+            }
+            return resultString;
+        }
+
+        private string RunScript(string script, string databaseName)
+        {
+            var resultString = "";
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+                MySqlScript query = new MySqlScript(connection, script);
+                // TODO: Regex capture actual delimter, instead of forcing "$$";
+                if (script.Contains("DELIMITER"))
+                {
+                    query.Delimiter = "$$";
+                }
+                //query.Error += Database_MySqlError;
+                //query.StatementExecuted += Database_StatementExecuted;
+                //query.ScriptCompleted += Database_StatementCompleted;
+                int count = query.Execute();
+                resultString += $"Affected rows: {count.ToString()}";
+                connection.Close();
+            }
+            return resultString;
+        }
+
+        /// <summary>
+        /// Attempts to Drop a database, with a name collected a Form Textbox.
+        /// </summary>
+        public bool DropDatabase(string databaseName)
+        {
+            log.Debug($"Dropping database {databaseName}!!!");
+            var dbQuery = "DROP DATABASE IF EXISTS `" + databaseName + "`;";
+            var result = ExecuteQuery(dbQuery, databaseName);
+            if (result.Length > 0)
+            {
+                log.Debug(result);
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Attempts to create a database, with a name collected a Form Textbox.
+        /// </summary>
+        public bool CreateDatabase(string databaseName)
+        {
+            log.Debug($"Creating database {databaseName}...");
+            // Database.Reset();
+            var dbQuery = "CREATE DATABASE IF NOT EXISTS `" + databaseName + "` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;";
+            var result = ExecuteQuery(dbQuery, "");
+            if (result.Length > 0)
+            {
+                log.Debug(result);
+            }
+            return true;
         }
     }
 }

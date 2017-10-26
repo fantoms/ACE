@@ -47,12 +47,9 @@ namespace ACE.Api.Controllers
         public HttpResponseMessage RedeployWorldDatabase(RedeployRequest request)
         {
             // Download the database from Github:
-            RemoteContentSync.RetreiveGithubFolder(ConfigManager.Config.ContentServer.DatabaseUrl);
-            RemoteContentSync.RetreieveWorldData();
-            // Download the database from Github:
             //RemoteContentSync.RetreiveGithubFolder(ConfigManager.Config.ContentServer.DatabaseUrl);
-            // Download the latest ACE-World release archive, extract contents into database dir, remove downloaded zip
-            // Run all scripts, in the correct sequences.
+            //RemoteContentSync.RetreieveWorldData();            
+            RemoteContentSync.ReLoadWorld();
             return Request.CreateResponse(HttpStatusCode.OK, "You win!");
         }
 
