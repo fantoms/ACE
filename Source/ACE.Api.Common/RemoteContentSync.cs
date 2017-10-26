@@ -48,7 +48,33 @@ namespace ACE.Api.Common
         /// The time when the Github API will accept more requests.
         /// </summary>
         public static DateTime? ApiResetTIme { get; set; } = DateTime.Today.AddYears(1);
-        
+
+        /// <summary>
+        /// Captures the Rate Limit Values from the Response Header
+        /// </summary>
+        /// <param name="headers"></param>
+        private static void StripHeaders(WebHeaderCollection headers)
+        {
+            if (headers?.Count > 0)
+            {
+                int tmpInt = 0;
+                double RateLimitEpoch = 0;
+
+                if (int.TryParse(headers.Get("X-RateLimit-Limit"), out tmpInt))
+                {
+                    TotalApiCallsAvailable = tmpInt;
+                }
+                if (int.TryParse(headers.Get("X-RateLimit-Remaining"), out tmpInt))
+                {
+                    RemaingApiCalls = tmpInt;
+                }
+                if (double.TryParse(headers.Get("X-RateLimit-Reset"), out RateLimitEpoch))
+                {
+                    ApiResetTIme = JwtUtil.ConvertFromUnixTimestamp(RateLimitEpoch);
+                }
+            }
+        }
+
         /// <summary>
         /// Retreieves a string from a web location.
         /// </summary>
@@ -87,7 +113,6 @@ namespace ACE.Api.Common
                 // Header is required for github
                 w.Headers.Add("User-Agent", ApiUserAgent);
                 w.DownloadFile(url, destinationFilePath);
-
                 if (File.Exists(destinationFilePath))
                     return true;
             }
@@ -206,41 +231,15 @@ namespace ACE.Api.Common
             return false;
         }
 
-        private static void StripHeaders(WebHeaderCollection headers)
-        {
-            if (headers?.Count > 0)
-            {
-                int tmpInt = 0;
-                double RateLimitEpoch = 0;
-
-                if (int.TryParse(headers.Get("X-RateLimit-Limit"), out tmpInt))
-                {
-                    TotalApiCallsAvailable = tmpInt;
-                }
-                if (int.TryParse(headers.Get("X-RateLimit-Remaining"), out tmpInt))
-                {
-                    RemaingApiCalls = tmpInt;
-                }
-                if (double.TryParse(headers.Get("X-RateLimit-Reset"), out RateLimitEpoch))
-                {
-                    ApiResetTIme = JwtUtil.ConvertFromUnixTimestamp(RateLimitEpoch);
-                }
-            }
-        }
-
         /// <summary>
         /// Creates a webClient that connects too Github and extracts relevant download metadata.
         /// </summary>
-        public static void RetreieveWorldData()
+        public static bool RetreieveWorldData()
         {
             if (RemaingApiCalls < TotalApiCallsAvailable)
             {
                 string GithubDownload = "";
-                string GithubName = "";
-                string GithubTag = "";
-                string GithubDate = "";
                 string GithubFilename = "";
-
                 // attempt to download the latest ACE-World json data
                 try
                 {
@@ -252,30 +251,35 @@ namespace ACE.Api.Common
                         var json = JObject.Parse(w.DownloadString(ConfigManager.Config.ContentServer.WorldArchiveUrl));
                         // Extract relevant details
                         GithubDownload = (string)json["assets"][0]["browser_download_url"];
-                        GithubName = (string)json["name"];
-                        GithubTag = (string)json["tag_name"];
-                        GithubDate = (string)json["published_at"];
                         GithubFilename = (string)json["assets"][0]["name"];
+                        //(string)json["name"] + (string)json["tag_name"] + (string)json["published_at"];
                         // Collect header info that tells how much retries and time left till reset.
                         StripHeaders(w.ResponseHeaders);
                     }
                 }
                 catch (Exception error)
                 {
-                    return;
+                    // Log failure
+                    return false;
                 }
                 var WordArchive = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, GithubFilename));
                 if (GetWebContent(GithubDownload, WordArchive))
                 {
-                    // Extract
-                    ZipFile.ExtractToDirectory(WordArchive, Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, "Database\\ACE-World")));
-                    File.Delete(WordArchive);
+                    // Extract & delete
+                    try
+                    {
+                        ZipFile.ExtractToDirectory(WordArchive, Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, "Database\\ACE-World")));
+                        File.Delete(WordArchive);
+                    } catch
+                    {
+                        // issue with disk space, trouble extracting, or file path became invalid
+                        return false;
+                    }
                 }
+                return true;
             }
-            else
-            {
-                // No more calls left, detail the time remaining
-            }
+            // No more calls left, detail the time remaining
+            return false;
         }
     }
 }
