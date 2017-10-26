@@ -15,6 +15,11 @@ namespace ACE.Api.Common
             return origin.AddSeconds(timestamp);
         }
 
+        public static DateTime ConvertFromUnixTimestamp(double unixTimeStamp)
+        {
+            return new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc).AddSeconds(unixTimeStamp).ToLocalTime();
+        }
+
         // from JWT spec
         public static string Base64UrlEncode(byte[] input)
         {

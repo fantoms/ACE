@@ -48,7 +48,7 @@ namespace ACE.Api.Controllers
         {
             // Download the database from Github:
             RemoteContentSync.RetreiveGithubFolder(ConfigManager.Config.ContentServer.DatabaseUrl);
-
+            RemoteContentSync.RetreieveWorldData();
             // Download the database from Github:
             //RemoteContentSync.RetreiveGithubFolder(ConfigManager.Config.ContentServer.DatabaseUrl);
             // Download the latest ACE-World release archive, extract contents into database dir, remove downloaded zip
