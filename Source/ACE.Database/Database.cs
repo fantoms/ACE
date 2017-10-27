@@ -1157,12 +1157,12 @@ namespace ACE.Database
         /// Executs a single Sql query against a specific database.
         /// </summary>
         /// <remarks>This function needs to be converted to common ACE functions, like prepared/constructed statements.</remarks>
-        public string ExecuteSqlQueryOrScript(string query, string databaseName, bool script)
+        public string ExecuteSqlQueryOrScript(string query, string databaseName, bool executeAsScript)
         {
             var result = "";
             try
             {
-                if (script)
+                if (executeAsScript)
                     RunScript(query, databaseName);
                 else
                     RunQuery(query, databaseName);
