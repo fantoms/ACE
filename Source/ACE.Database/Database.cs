@@ -1153,22 +1153,11 @@ namespace ACE.Database
             }
         }
 
-        public static int GetExceptionNumber(MySqlException my)
-        {
-            if (my != null)
-            {
-                int number = my.Number;
-                // if the number is zero, try to get the number of the inner exception
-                if (number == 0 && (my = my.InnerException as MySqlException) != null)
-                {
-                    number = my.Number;
-                }
-                return number;
-            }
-            return -1;
-        }
-
-        public string ExecuteQuery(string query, string databaseName)
+        /// <summary>
+        /// Executs a single Sql query against a specific database.
+        /// </summary>
+        /// <remarks>This function needs to be converted to common ACE functions, like prepared/constructed statements.</remarks>
+        public string ExecuteSqlQuery(string query, string databaseName)
         {
             var result = "";
             try
@@ -1214,8 +1203,11 @@ namespace ACE.Database
             return $"{result}";
         }
 
-
-        public string ExecuteScript(string script, string databaseName)
+        /// <summary>
+        /// Executs a script within a MySqlScript query against a specific database.
+        /// </summary>
+        /// <remarks>This function needs to be converted to common ACE functions.</remarks>
+        public string ExecuteMysqlScript(string script, string databaseName)
         {
             var result = "";
             try
@@ -1261,6 +1253,7 @@ namespace ACE.Database
             return $"{result}";
         }
 
+        /// <remarks>This function needs to be converted to common ACE functions.</remarks>
         private string RunQuery(string query, string databaseName)
         {
             var resultString = "";
@@ -1280,7 +1273,7 @@ namespace ACE.Database
             }
             return resultString;
         }
-
+        /// <remarks>This function needs to be converted to common ACE functions.</remarks>
         private string RunScript(string script, string databaseName)
         {
             var resultString = "";
@@ -1293,9 +1286,9 @@ namespace ACE.Database
                 {
                     query.Delimiter = "$$";
                 }
-                //query.Error += Database_MySqlError;
-                //query.StatementExecuted += Database_StatementExecuted;
-                //query.ScriptCompleted += Database_StatementCompleted;
+                query.Error += Query_Error;
+                query.ScriptCompleted += Query_ScriptCompleted;
+                query.StatementExecuted += Query_StatementExecuted;
                 int count = query.Execute();
                 resultString += $"Affected rows: {count.ToString()}";
                 connection.Close();
@@ -1303,14 +1296,30 @@ namespace ACE.Database
             return resultString;
         }
 
+        private void Query_StatementExecuted(object sender, MySqlScriptEventArgs args)
+        {
+            Console.Write(".");
+        }
+
+        private void Query_ScriptCompleted(object sender, EventArgs e)
+        {
+            Console.WriteLine("MysqlScript has completed!");
+        }
+
+        private void Query_Error(object sender, MySqlScriptErrorEventArgs args)
+        {
+            Console.WriteLine("MysqlScript has encountered an erro!");
+        }
+
         /// <summary>
         /// Attempts to Drop a database, with a name collected a Form Textbox.
         /// </summary>
+        /// <remarks>This function needs to be converted to common ACE functions.</remarks>
         public bool DropDatabase(string databaseName)
         {
             log.Debug($"Dropping database {databaseName}!!!");
             var dbQuery = "DROP DATABASE IF EXISTS `" + databaseName + "`;";
-            var result = ExecuteQuery(dbQuery, databaseName);
+            var result = ExecuteSqlQuery(dbQuery, databaseName);
             if (result.Length > 0)
             {
                 log.Debug(result);
@@ -1321,17 +1330,36 @@ namespace ACE.Database
         /// <summary>
         /// Attempts to create a database, with a name collected a Form Textbox.
         /// </summary>
+        /// <remarks>This function needs to be converted to common ACE functions.</remarks>
         public bool CreateDatabase(string databaseName)
         {
             log.Debug($"Creating database {databaseName}...");
             // Database.Reset();
             var dbQuery = "CREATE DATABASE IF NOT EXISTS `" + databaseName + "` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;";
-            var result = ExecuteQuery(dbQuery, "");
+            var result = ExecuteSqlQuery(dbQuery, "");
             if (result.Length > 0)
             {
                 log.Debug(result);
             }
             return true;
+        }
+
+        /// <summary>
+        /// Returns inner MySql Exception number.
+        /// </summary>
+        public static int GetExceptionNumber(MySqlException my)
+        {
+            if (my != null)
+            {
+                int number = my.Number;
+                // if the number is zero, try to get the number of the inner exception
+                if (number == 0 && (my = my.InnerException as MySqlException) != null)
+                {
+                    number = my.Number;
+                }
+                return number;
+            }
+            return -1;
         }
     }
 }
