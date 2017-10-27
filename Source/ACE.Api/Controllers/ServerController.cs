@@ -47,12 +47,12 @@ namespace ACE.Api.Controllers
         public HttpResponseMessage RedeployWorldDatabase(RedeployRequest request)
         {
             // Stop/Pause The server from writing to the DB?
-            string result = Database.RemoteContentSync.ReLoadWorld();
+            string errorResult = Database.RemoteContentSync.ReLoadWorld();
 
-            if (request == null)
-                return Request.CreateResponse(HttpStatusCode.OK, "You win!");
+            if (errorResult == null)
+                return Request.CreateResponse(HttpStatusCode.OK, "The World Database has been deployed!");
             else
-                return Request.CreateResponse(HttpStatusCode.InternalServerError, "There was an error durring your request.");
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, $"There was an error durring your request. {errorResult}");
         }
 
         /// <summary>
