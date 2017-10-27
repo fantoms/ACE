@@ -1250,12 +1250,12 @@ namespace ACE.Database
 
         private void Query_ScriptCompleted(object sender, EventArgs e)
         {
-            Console.WriteLine("MysqlScript has completed!");
+            Console.WriteLine("Script has completed!");
         }
 
         private void Query_Error(object sender, MySqlScriptErrorEventArgs args)
         {
-            Console.WriteLine("MysqlScript has encountered an erro!");
+            Console.WriteLine("Script encountered an error!");
         }
 
         /// <summary>

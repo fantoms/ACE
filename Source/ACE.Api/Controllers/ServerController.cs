@@ -46,7 +46,6 @@ namespace ACE.Api.Controllers
         [SwaggerResponse(HttpStatusCode.MethodNotAllowed, "You have unexported changes in your database.  Please specify 'force = true' in your request.", typeof(SimpleMessage))]
         public HttpResponseMessage RedeployWorldDatabase(RedeployRequest request)
         {
-            // Stop/Pause The server from writing to the DB?
             string errorResult = Database.RemoteContentSync.ReLoadWorld();
 
             if (errorResult == null)
