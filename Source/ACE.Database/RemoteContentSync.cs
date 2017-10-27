@@ -314,7 +314,7 @@ namespace ACE.Database
         /// Attempts to Load all world data present from the appropriate downloaded folder, into a name database with the name collected from the config.
         /// </summary>
         /// <remarks>
-        /// This function is overwhelmed with complexity, due too the fact that we are merging around 4 different structures, using a SaaS (github).
+        /// This function is overwhelmed with complexity, due too the fact that we are merging around 4 different folder structures and using a SaaS (github).
         /// </remarks>
         public static string RedeployWorldDatabase()
         {
