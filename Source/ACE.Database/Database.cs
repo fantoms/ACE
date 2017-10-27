@@ -1157,12 +1157,15 @@ namespace ACE.Database
         /// Executs a single Sql query against a specific database.
         /// </summary>
         /// <remarks>This function needs to be converted to common ACE functions, like prepared/constructed statements.</remarks>
-        public string ExecuteSqlQuery(string query, string databaseName)
+        public string ExecuteSqlQueryOrScript(string query, string databaseName, bool script)
         {
             var result = "";
             try
             {
-                result = RunQuery(query, databaseName);
+                if (script)
+                    RunScript(query, databaseName);
+                else
+                    RunQuery(query, databaseName);
             }
             catch (SqlException ex)
             {
@@ -1203,80 +1206,26 @@ namespace ACE.Database
             return $"{result}";
         }
 
-        /// <summary>
-        /// Executs a script within a MySqlScript query against a specific database.
-        /// </summary>
         /// <remarks>This function needs to be converted to common ACE functions.</remarks>
-        public string ExecuteMysqlScript(string script, string databaseName)
+        private void RunQuery(string query, string databaseName)
         {
-            var result = "";
-            try
-            {
-                result = RunScript(script, databaseName);
-            }
-            catch (SqlException ex)
-            {
-                var errMsg = $"SQL Error in the downloaded data: {ex.Message}";
-#if DEBUG
-                Console.WriteLine(errMsg);
-#endif
-                return errMsg;
-            }
-            catch (MySqlException ex)
-            {
-                var errMsg = "Error";
-                // get the number from the inner exception
-                if (ex.InnerException != null)
-                {
-                    var MySqlErrorNumber = GetExceptionNumber(ex);
-                    // create a short error message for the console log / label
-                    errMsg += $"{MySqlErrorNumber} : {ex.InnerException.Message}";
-                }
-                else
-                {
-                    errMsg += $"{ex.Message}";
-                }
-#if DEBUG
-                // long message to console
-                Console.WriteLine(errMsg);
-#endif
-                return errMsg;
-            }
-            catch (Exception e)
-            {
-                var errMsg = $"Error: {e.Message}";
-#if DEBUG
-                Console.WriteLine(errMsg);
-#endif
-                return errMsg;
-            }
-            return $"{result}";
-        }
-
-        /// <remarks>This function needs to be converted to common ACE functions.</remarks>
-        private string RunQuery(string query, string databaseName)
-        {
-            var resultString = "";
             var dbConnectionString = "";
-            if (databaseName.Length == 0 )
-            {
+            if (databaseName.Length == 0)
                 dbConnectionString = connectionString.Replace("database=ace_world;", string.Empty);
-            }
+            else
+                dbConnectionString = connectionString;
             using (MySqlConnection connection = new MySqlConnection(dbConnectionString))
             using (MySqlCommand command = connection.CreateCommand())
             {
                 connection.Open();
                 command.CommandText = query;
                 MySqlDataReader reader = command.ExecuteReader();
-                resultString += $"Affected Rows: {reader.RecordsAffected}";
                 connection.Close();
             }
-            return resultString;
         }
-        /// <remarks>This function needs to be converted to common ACE functions.</remarks>
-        private string RunScript(string script, string databaseName)
+
+        private void RunScript(string script, string databaseName)
         {
-            var resultString = "";
             using (MySqlConnection connection = new MySqlConnection(connectionString))
             {
                 connection.Open();
@@ -1289,11 +1238,9 @@ namespace ACE.Database
                 query.Error += Query_Error;
                 query.ScriptCompleted += Query_ScriptCompleted;
                 query.StatementExecuted += Query_StatementExecuted;
-                int count = query.Execute();
-                resultString += $"Affected rows: {count.ToString()}";
+                query.Execute();
                 connection.Close();
             }
-            return resultString;
         }
 
         private void Query_StatementExecuted(object sender, MySqlScriptEventArgs args)
@@ -1314,34 +1261,34 @@ namespace ACE.Database
         /// <summary>
         /// Attempts to Drop a database, with a name collected a Form Textbox.
         /// </summary>
-        /// <remarks>This function needs to be converted to common ACE functions.</remarks>
-        public bool DropDatabase(string databaseName)
+        /// <remarks>This function must NOT set a database in the connection string.</remarks>
+        public string DropDatabase(string databaseName)
         {
             log.Debug($"Dropping database {databaseName}!!!");
             var dbQuery = "DROP DATABASE IF EXISTS `" + databaseName + "`;";
-            var result = ExecuteSqlQuery(dbQuery, databaseName);
-            if (result.Length > 0)
+            var result = ExecuteSqlQueryOrScript(dbQuery, databaseName, false);
+            if (result.Length > 0 && result != "0")
             {
-                log.Debug(result);
+                return result;
             }
-            return true;
+            return null;
         }
 
         /// <summary>
         /// Attempts to create a database, with a name collected a Form Textbox.
         /// </summary>
-        /// <remarks>This function needs to be converted to common ACE functions.</remarks>
-        public bool CreateDatabase(string databaseName)
+        /// <remarks>This function must NOT set a database in the connection string.</remarks>
+        public string CreateDatabase(string databaseName)
         {
             log.Debug($"Creating database {databaseName}...");
-            // Database.Reset();
             var dbQuery = "CREATE DATABASE IF NOT EXISTS `" + databaseName + "` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;";
-            var result = ExecuteSqlQuery(dbQuery, "");
-            if (result.Length > 0)
+            var result = ExecuteSqlQueryOrScript(dbQuery, "", false);
+            // Only show result strings
+            if (result.Length > 3)
             {
-                log.Debug(result);
+                return result;
             }
-            return true;
+            return null;
         }
 
         /// <summary>

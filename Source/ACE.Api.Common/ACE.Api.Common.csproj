@@ -112,10 +112,6 @@
       <Project>{136E260E-B4A8-4E6F-B9CB-6AE7FC368DC8}</Project>
       <Name>ACE.Common</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ACE.Database\ACE.Database.csproj">
-      <Project>{7CFA48D9-1B44-49A6-AFB4-D8BF1F1E545A}</Project>
-      <Name>ACE.Database</Name>
-    </ProjectReference>
     <ProjectReference Include="..\ACE.Entity\ACE.Entity.csproj">
       <Project>{aa611a84-cdf8-4ab6-8d53-085c897a7422}</Project>
       <Name>ACE.Entity</Name>
