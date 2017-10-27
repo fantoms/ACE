@@ -101,7 +101,7 @@ namespace ACE.Command.Handlers
         [CommandHandler("redeploy-world", AccessLevel.Developer, CommandHandlerFlag.ConsoleInvoke, 0, "Download and redeploy the world content, from github.")]
         public static void RedeployWorld(Session session, params string[] parameters)
         {
-            string errorResult = Database.RemoteContentSync.ReLoadWorld();
+            string errorResult = Database.RemoteContentSync.RedeployWorldDatabase();
             if (errorResult == null)
                 Console.WriteLine("The World Database has been deployed!");
             else

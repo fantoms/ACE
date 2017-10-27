@@ -42,9 +42,14 @@ namespace ACE.Database
         private static string WorldGithubFilename { get; set; }
 
         /// <summary>
+        /// Local path pointing too the Extracted ACE-World Data.
+        /// </summary>
+        private static string WorldDataPath { get; set; } = "Database\\ACE-World\\";
+
+        /// <summary>
         /// Database/Updates/World/
         /// </summary>
-        private static string WoldGithubUpdatePath { get; set; }
+        private static string WoldGithubUpdatePath { get; set; } = "Database\\Updates\\World\\";
 
         /// <summary>
         /// Database/Base/World/
@@ -308,15 +313,22 @@ namespace ACE.Database
         /// <summary>
         /// Attempts to Load all world data present from the appropriate downloaded folder, into a name database with the name collected from the config.
         /// </summary>
-        public static string ReLoadWorld()
+        /// <remarks>
+        /// This function is overwhelmed with complexity, due too the fact that we are merging around 4 different structures, using a SaaS (github).
+        /// </remarks>
+        public static string RedeployWorldDatabase()
         {
+            log.Debug("A World Redeploy has been initiated.");
+            // Determine if the config settings appear valid:
             if (ConfigManager.Config.MySql.World.Database?.Length > 0 && ConfigManager.Config.ContentServer.LocalDataPath?.Length > 0)
             {
+                // Check the data path and create if needed.
                 var localDataPath = ConfigManager.Config.ContentServer.LocalDataPath;
                 if (CheckLocalDataPath(localDataPath))
                 {
+                    // Setup the database requirements.
                     Initialize();
-                    // Download the database from Github:
+                    // Download the database files from Github:
                     if (CheckLocalDataPath(Path.GetFullPath(Path.Combine(localDataPath, WoldGithubBaseSqlPath))))
                         RetrieveWebContent(ConfigManager.Config.ContentServer.WorldBaseUrl, Path.GetFullPath(Path.Combine(localDataPath, WoldGithubBaseSqlPath, WoldGithubBaseSqlFile)));
                     RetrieveGithubFolder(ConfigManager.Config.ContentServer.WorldUpdateUrl);
@@ -342,9 +354,9 @@ namespace ACE.Database
                     //  First Search Path: Base\\WorldBase.sql
                     //  Second Search Path: Updates\\World\\
                     //  Third Search Path: ACE-World\\${WorldGithubFilename}
-                    var worldBase = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WoldGithubBaseSqlPath, "WorldBase.sql"));
-                    var worldDataArchivePath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, "Database\\ACE-World\\"));
-                    var worldUpdatePath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, "Database\\Updates\\World\\"));
+                    var worldBase = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WoldGithubBaseSqlPath, WoldGithubBaseSqlFile));
+                    var worldDataPath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WorldDataPath));
+                    var worldUpdatePath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WoldGithubUpdatePath));
 
                     try
                     {
@@ -355,7 +367,7 @@ namespace ACE.Database
                             return "There was an error locating the WorldBase.sql file!";
 
                         // Second, find all of the sql files in directory, and load them
-                        var files = from file in Directory.EnumerateFiles(worldDataArchivePath) where !file.Contains(".txt") select new { File = file };
+                        var files = from file in Directory.EnumerateFiles(worldDataPath) where !file.Contains(".txt") select new { File = file };
                         if (files.Count() > 0)
                         {
                             foreach (var file in files)
