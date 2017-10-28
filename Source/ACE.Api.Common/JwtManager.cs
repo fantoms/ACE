@@ -33,14 +33,14 @@ namespace ACE.Api.Common
         private static string RsaPrivateKey { get; set; }
 
         public static SigningCredentials HmacSigning { get; private set; }
-        
+
         static JwtManager()
         {
             EnsureHmacKey();
 
             var hmacKey = Convert.FromBase64String(HmacSecret);
-            HmacSigning = new SigningCredentials(new InMemorySymmetricSecurityKey(hmacKey), 
-                                                  "http://www.w3.org/2001/04/xmldsig-more#hmac-sha256", 
+            HmacSigning = new SigningCredentials(new InMemorySymmetricSecurityKey(hmacKey),
+                                                  "http://www.w3.org/2001/04/xmldsig-more#hmac-sha256",
                                                   "http://www.w3.org/2001/04/xmlenc#sha256");
         }
 
@@ -76,16 +76,26 @@ namespace ACE.Api.Common
             var tokenHandler = new JwtSecurityTokenHandler();
             var now = DateTime.UtcNow;
 
+            List<string> roles = new List<string>();
+            foreach (AccessLevel level in Enum.GetValues(typeof(AccessLevel)))
+            {
+                if ((int)role >= (int)level)
+                    roles.Add(level.ToString());
+            }
+
+            var subject = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.Name, account.Name),
+                new Claim(ClaimTypes.NameIdentifier, account.AccountGuid.ToString()),
+                new Claim("account_id", account.AccountId.ToString()),
+                new Claim("issuing_server", ConfigManager.Config.AuthServer.PublicUrl)
+            });
+
+            roles.ForEach(r => subject.AddClaim(new Claim(ClaimTypes.Role, r)));
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim("account_name", account.Name),
-                    new Claim("account_guid", account.AccountGuid.ToString()),
-                    new Claim("account_id", account.AccountId.ToString()),
-                    new Claim("role", role.ToString()),
-                    new Claim("issuing_server", ConfigManager.Config.AuthServer.PublicUrl)
-                }),
+                Subject = subject,
                 TokenIssuerName = AceIssuerName,
                 AppliesToAddress = AceAudience,
                 Lifetime = new Lifetime(now, now.AddMinutes(expireMinutes)),
@@ -99,7 +109,7 @@ namespace ACE.Api.Common
         public static TokenInfo ParseToken(string token, bool validateHmac = true)
         {
             TokenInfo ti = new TokenInfo();
-            
+
             var parts = token.Split('.');
             if (parts.Length == 3)
             {
@@ -141,26 +151,26 @@ namespace ACE.Api.Common
                 if (jwtAudience != JwtManager.AceAudience)
                     throw new AuthenticationException($"Invalid audience '{jwtAudience}'.  Expected '{JwtManager.AceAudience}'.");
 
-                ti.Name = (string)bodyData["account_name"];
+                ti.Name = (string)bodyData[ClaimTypes.Name] ?? (string)bodyData["unique_name"];
 
-                /// TODO: Convert to SecurityLevel instead of AccessLevel
-                AccessLevel thisGuy = AccessLevel.Player;
-                List<string> roles = new List<string>();
-                if (Enum.TryParse((string)bodyData["role"], out thisGuy))
+                var roles = bodyData[ClaimTypes.Role] ?? bodyData["role"];
+
+                if (roles != null)
                 {
-                    foreach (AccessLevel level in Enum.GetValues(typeof(AccessLevel)))
-                    {
-                        if (thisGuy >= level)
-                            roles.Add(level.ToString());
-                    }
+                    if (roles.HasValues)
+                        ti.Roles = roles.Select(r => (string)r).ToList();
+                    else
+                        ti.Roles = new List<string>() { (string)roles };
                 }
 
-                if (roles.Count > 0) ti.Roles = roles;
-                ti.AccountGuid = Guid.Parse((string)bodyData["account_guid"]);
+                string accountGuid = (string)bodyData[ClaimTypes.NameIdentifier] ?? (string)bodyData["nameid"];
+                ti.AccountGuid = Guid.Parse(accountGuid);
+                ti.AccountId = uint.Parse((string)bodyData["account_id"]);
                 ti.IssuingServer = (string)bodyData["issuing_server"];
 
                 return ti;
-            } else
+            }
+            else
                 throw new AuthenticationException("Invalid JWT!");
         }
 
@@ -181,7 +191,7 @@ namespace ACE.Api.Common
 
         public static TokenInfo ParseRemoteToken(string rawToken)
         {
-             TokenInfo ti = ParseToken(rawToken, false);
+            TokenInfo ti = ParseToken(rawToken, false);
 
             // check game config to see if the issuing server is allowed
             if (!ConfigManager.Config.Server.AllowedAuthServers.Contains(ti.IssuingServer))
