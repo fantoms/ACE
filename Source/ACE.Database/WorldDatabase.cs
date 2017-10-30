@@ -77,7 +77,9 @@ namespace ACE.Database
             GetContentResources,
             CreateContentResource,
             UpdateContentResource,
-            DeleteContentResource
+            DeleteContentResource,
+
+            CheckForUserModifiedFlag
         }
 
         protected override Type PreparedStatementType => typeof(WorldPreparedStatement);
@@ -157,6 +159,7 @@ namespace ACE.Database
             ConstructStatement(WorldPreparedStatement.CreateContentResource, typeof(ContentResource), ConstructedStatementType.Insert);
             ConstructStatement(WorldPreparedStatement.UpdateContentResource, typeof(ContentResource), ConstructedStatementType.Update);
             ConstructStatement(WorldPreparedStatement.DeleteContentResource, typeof(ContentResource), ConstructedStatementType.Delete);
+            ConstructStatement(WorldPreparedStatement.CheckForUserModifiedFlag, typeof(AceObject), ConstructedStatementType.Get);
         }
 
         public List<CachedWeenieClass> GetRandomWeeniesOfType(uint itemType, uint numWeenies)
@@ -736,6 +739,17 @@ namespace ACE.Database
             }
 
             return results;
+        }
+
+        public bool UserModifiedFlagPresent()
+        {
+            // seach weenies or look for a single user mod flag ?
+            SearchWeeniesCriteria criteria = new SearchWeeniesCriteria();
+            criteria.UserModified = true;
+            var result = SearchWeenies(criteria);
+            if (result.Count > 0)
+                return true;
+            return false;
         }
     }
 }

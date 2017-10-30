@@ -457,7 +457,7 @@ namespace ACE.Database
         }
 
         /// <summary>
-        /// Converts a double to epock time. Used with Github.
+        /// Converts a double to epoch time. Used with Github.
         /// </summary>
         public static DateTime ConvertFromUnixTimestamp(double unixTimeStamp)
         {

@@ -261,10 +261,12 @@ namespace ACE.Database
                 Password = password,
                 Database = database,
                 IgnorePrepare = false,
-                Pooling = true
+                Pooling = true,
+                AllowUserVariables = true,
+                AllowZeroDateTime = true
             };
 
-            connectionString = connectionBuilder.ToString() + ";Allow User Variables=True;";
+            connectionString = connectionBuilder.ToString();
 
             for (;;)
             {

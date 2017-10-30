@@ -5,6 +5,7 @@ using ACE.Managers;
 using ACE.Network;
 using ACE.DatLoader;
 using System.Collections.Generic;
+using ACE.Database;
 
 namespace ACE.Command.Handlers
 {
@@ -101,11 +102,29 @@ namespace ACE.Command.Handlers
         [CommandHandler("redeploy-world", AccessLevel.Developer, CommandHandlerFlag.ConsoleInvoke, 0, "Download and redeploy the world content, from github.")]
         public static void RedeployWorld(Session session, params string[] parameters)
         {
-            string errorResult = Database.RemoteContentSync.RedeployWorldDatabase();
-            if (errorResult == null)
-                Console.WriteLine("The World Database has been deployed!");
-            else
-                Console.WriteLine($"There was an error durring your request. {errorResult}");
+            bool forceRedploy = false;
+            var userModifiedFlagPresent = DatabaseManager.World.UserModifiedFlagPresent();
+            if (parameters?.Length > 0)
+            {
+                string force = parameters[0];
+                if (force.Length > 0)
+                {
+                    if (force.ToLowerInvariant().Contains("force"))
+                    {
+                        Console.WriteLine("Force redeploy reached!");
+                        forceRedploy = true;
+                    }
+                }
+            }
+            if (forceRedploy || !userModifiedFlagPresent)
+            {
+                string errorResult = Database.RemoteContentSync.RedeployWorldDatabase();
+                if (errorResult == null)
+                    Console.WriteLine("The World Database has been deployed!");
+                else
+                    Console.WriteLine($"There was an error durring your request. {errorResult}");
+            }
+            Console.WriteLine("User created content has been detected in the database. Please export the current database or include the 'force' parameter with this command.");
         }
     }
 }

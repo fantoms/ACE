@@ -49,5 +49,7 @@ namespace ACE.Database
         /// a full object.  to get the full object, call GetWeenie on the resulting weenie id.
         /// </summary>
         List<WeenieSearchResult> SearchWeenies(SearchWeeniesCriteria criteria);
+
+        bool UserModifiedFlagPresent();
     }
 }

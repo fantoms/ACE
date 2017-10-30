@@ -36,7 +36,6 @@ namespace ACE.Api.Controllers
         /// <summary>
         /// Redeploys the world database from the current contents of your ACE-World repository.  all changes that
         /// have not already been exported WILL BE LOST, and `user_modified` flags will all be reset to false.
-        /// TODO: fantom implement
         /// </summary>
         [HttpGet]
         [AceAuthorize(AccessLevel.Developer)]
@@ -46,12 +45,21 @@ namespace ACE.Api.Controllers
         [SwaggerResponse(HttpStatusCode.MethodNotAllowed, "You have unexported changes in your database.  Please specify 'force = true' in your request.", typeof(SimpleMessage))]
         public HttpResponseMessage RedeployWorldDatabase(RedeployRequest request)
         {
-            string errorResult = Database.RemoteContentSync.RedeployWorldDatabase();
+            //TODO: Check to determine if a userModified flag has been set in the database or force == true
+            var modifiedFlagPresent = WorldDb.UserModifiedFlagPresent();
 
-            if (errorResult == null)
-                return Request.CreateResponse(HttpStatusCode.OK, "The World Database has been deployed!");
-            else
-                return Request.CreateResponse(HttpStatusCode.InternalServerError, $"There was an error durring your request. {errorResult}");
+            var forceDeploy = (request != null) ? request.ForceDeploy : false;
+
+            if (!modifiedFlagPresent || forceDeploy)
+            {
+                string errorResult = Database.RemoteContentSync.RedeployWorldDatabase();
+
+                if (errorResult == null)
+                    return Request.CreateResponse(HttpStatusCode.OK, "The World Database has been deployed!");
+                else
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, $"There was an error durring your request. {errorResult}");
+            }
+            return Request.CreateResponse(HttpStatusCode.MethodNotAllowed, "You have unexported changes in your database.  Please specify 'force = true' in your request.");
         }
 
         /// <summary>
