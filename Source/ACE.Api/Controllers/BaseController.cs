@@ -24,14 +24,14 @@ namespace ACE.Api.Controllers
                           ConfigManager.Config.MySql.World.Port,
                           ConfigManager.Config.MySql.World.Username,
                           ConfigManager.Config.MySql.World.Password,
-                          ConfigManager.Config.MySql.World.Database, false, false);
+                          ConfigManager.Config.MySql.World.Database);
 
             AuthDb = new AuthenticationDatabase();
             AuthDb.Initialize(ConfigManager.Config.MySql.Authentication.Host,
                           ConfigManager.Config.MySql.Authentication.Port,
                           ConfigManager.Config.MySql.Authentication.Username,
                           ConfigManager.Config.MySql.Authentication.Password,
-                          ConfigManager.Config.MySql.Authentication.Database, false, false);
+                          ConfigManager.Config.MySql.Authentication.Database);
 
         }
     }

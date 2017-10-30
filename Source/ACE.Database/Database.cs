@@ -251,7 +251,7 @@ namespace ACE.Database
 
         protected virtual Type PreparedStatementType { get; }
 
-        public void Initialize(string host, uint port, string user, string password, string database, bool autoReconnect = true, bool InitializeStatements = true)
+        public void Initialize(string host, uint port, string user, string password, string database, bool autoReconnect = true)
         {
             var connectionBuilder = new MySqlConnectionStringBuilder()
             {
@@ -290,7 +290,7 @@ namespace ACE.Database
                 }
             }
 
-            if(InitializeStatements) InitializePreparedStatements();
+            InitializePreparedStatements();
         }
 
         public DatabaseTransaction BeginTransaction() { return new DatabaseTransaction(this); }

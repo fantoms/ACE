@@ -88,7 +88,7 @@ namespace ACE.Database
                           ConfigManager.Config.MySql.World.Port,
                           ConfigManager.Config.MySql.World.Username,
                           ConfigManager.Config.MySql.World.Password,
-                          ConfigManager.Config.MySql.World.Database, false, false);
+                          ConfigManager.Config.MySql.World.Database, false);
         }
 
         /// <summary>
