@@ -77,9 +77,7 @@ namespace ACE.Database
             GetContentResources,
             CreateContentResource,
             UpdateContentResource,
-            DeleteContentResource,
-
-            CheckForUserModifiedFlag
+            DeleteContentResource
         }
 
         protected override Type PreparedStatementType => typeof(WorldPreparedStatement);
@@ -159,7 +157,6 @@ namespace ACE.Database
             ConstructStatement(WorldPreparedStatement.CreateContentResource, typeof(ContentResource), ConstructedStatementType.Insert);
             ConstructStatement(WorldPreparedStatement.UpdateContentResource, typeof(ContentResource), ConstructedStatementType.Update);
             ConstructStatement(WorldPreparedStatement.DeleteContentResource, typeof(ContentResource), ConstructedStatementType.Delete);
-            ConstructStatement(WorldPreparedStatement.CheckForUserModifiedFlag, typeof(AceObject), ConstructedStatementType.Get);
         }
 
         public List<CachedWeenieClass> GetRandomWeeniesOfType(uint itemType, uint numWeenies)
