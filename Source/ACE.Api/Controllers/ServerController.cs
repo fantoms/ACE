@@ -45,8 +45,10 @@ namespace ACE.Api.Controllers
         [SwaggerResponse(HttpStatusCode.MethodNotAllowed, "You have unexported changes in your database.  Please specify 'force = true' in your request.", typeof(SimpleMessage))]
         public HttpResponseMessage RedeployWorldDatabase(RedeployRequest request)
         {
+            // Only allow one request at a time:
             if (Database.RemoteContentSync.RedeploymentActive)
                 return Request.CreateResponse(HttpStatusCode.MethodNotAllowed, "A Redeployment already in progress!");
+            //TODO: Fix this hack, make the redeploy request object work properly:
             var forceDeploy = Request.RequestUri.Query.ToLowerInvariant().Contains("request.force=true") ? true : false;
             // Check to determine if a userModified flag has been set in the database
             var modifiedFlagPresent = WorldDb.UserModifiedFlagPresent();
