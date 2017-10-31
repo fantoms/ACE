@@ -26,6 +26,8 @@ namespace ACE.Database
 
         private static WorldDatabase WorldDb { get; set; }
 
+        public static bool RedeploymentActive { get; private set; } = false;
+
         /// <summary>
         /// External user agent used when connecting to the github Api, or another location.
         /// </summary>
@@ -261,6 +263,15 @@ namespace ACE.Database
         }
 
         /// <summary>
+        /// Can be used to download the entire database folder at a high cost to the Github API Request count.
+        /// </summary>
+        /// <returns></returns>
+        public static bool RetreiveAllDatabaseScripts()
+        {
+            return RetrieveGithubFolder("https://api.github.com/repositories/79078680/contents/Database/");
+        }
+
+        /// <summary>
         /// Creates a webClient that connects too Github and extracts relevant download metadata.
         /// </summary>
         public static string RetreieveWorldData()
@@ -310,6 +321,135 @@ namespace ACE.Database
             return $"You have exhausted your Github API Limit limt per hour. Please wait till {ApiResetTIme}";
         }
 
+        private static void ResetDatabase(string databaseName)
+        {
+            // Delete Database, to clear everything including stored procs and views.
+            var dropResult = WorldDb.DropDatabase(databaseName);
+            if (dropResult != null)
+            {
+                log.Debug($"Error dropping database: {dropResult}");
+            }
+
+            // Create Database
+            var createResult = WorldDb.CreateDatabase(databaseName);
+            if (createResult != null)
+            {
+                log.Debug($"Error dropping database: {createResult}");
+            }
+        }
+
+        /// <summary>
+        /// Attempts to Load all databases and data from the appropriate downloaded folder.
+        /// </summary>
+        public static string RedeployAllDatabase()
+        {
+            if (RedeploymentActive)
+                return "There is already an active redeployment in progress...";
+
+            log.Debug("A full database Redeployment has been initiated!");
+            // Determine if the config settings appear valid:
+            if (ConfigManager.Config.MySql.World.Database?.Length > 0 && ConfigManager.Config.ContentServer.LocalDataPath?.Length > 0)
+            {
+                // Check the data path and create if needed.
+                var localDataPath = ConfigManager.Config.ContentServer.LocalDataPath;
+                if (CheckLocalDataPath(localDataPath))
+                {
+                    // Setup the database requirements.
+                    Initialize();
+                    // Download the database files from Github:
+                    log.Debug("Downloading all database files from Github Folder.");
+                    RetrieveGithubFolder(ConfigManager.Config.ContentServer.WorldUpdateUrl);
+                    log.Debug("Downloading ACE-World Archive.");
+                    RetreieveWorldData();
+
+                    List<string> databaseNames = new List<string>();
+
+                    databaseNames.Add(ConfigManager.Config.MySql.Authentication.Database);
+                    databaseNames.Add(ConfigManager.Config.MySql.Shard.Database);
+                    databaseNames.Add(ConfigManager.Config.MySql.World.Database);
+                    foreach (var databaseName in databaseNames)
+                    {
+                        ResetDatabase(databaseName);
+
+                        //A Github Database File Resource Can have
+                        // A Default DatabaseName as Destination
+                        // A Source URL Path
+                        // A Source URL
+                        // A Destination Path
+                        // A TagName?
+                        // An ACE-World Release VersionNumber?
+                        // An Api Release Date
+
+                        //Github download can have:
+                        // A Github Resource
+                        // A File Size
+                        // A File Name
+                        // A File Extension
+                        // 
+
+                        // Load World Data from 3 locations, in sequential order:
+                        //  First Search Path: ${Download}Database\\Base\\
+                        //  Second Search Path: Updates\\World\\
+                        //  Third Search Path: ACE-World\\${WorldGithubFilename}
+                        var dbBase = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath));
+                        //LoadBase(dbBase);
+                        var worldDataPath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WorldDataPath));
+                        var worldUpdatePath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WoldGithubUpdatePath));
+
+                        try
+                        {
+                            // First sequence, load the world base
+                            if (File.Exists(dbBase))
+                                ReadAndLoadScript(dbBase, databaseName);
+                            else
+                                return "There was an error locating the WorldBase.sql file!";
+
+                            // Second, find all of the sql files in directory, and load them
+                            var files = from file in Directory.EnumerateFiles(worldDataPath) where !file.Contains(".txt") select new { File = file };
+                            if (files.Count() > 0)
+                            {
+                                foreach (var file in files)
+                                {
+                                    ReadAndLoadScript(file.File, databaseName);
+                                }
+                            }
+
+                            // Last, find all of the sql files in directory, and load them
+                            files = from file in Directory.EnumerateFiles(worldUpdatePath) where !file.Contains(".txt") select new { File = file };
+                            if (files.Count() > 0)
+                            {
+                                foreach (var file in files)
+                                {
+                                    ReadAndLoadScript(file.File, databaseName);
+                                }
+                            }
+                        }
+                        catch (Exception error)
+                        {
+                            var errorMessage = error.Message;
+                            if (error.InnerException != null)
+                            {
+                                errorMessage += " Inner: " + error.InnerException.Message;
+                            }
+                            log.Debug(errorMessage);
+                            return errorMessage;
+                        }
+                        // Success
+                        return null;
+                    }
+                }
+                var invalidDownloadPath = "Invalid Download path.";
+                log.Debug(invalidDownloadPath);
+                return invalidDownloadPath;
+            }
+            // Could not find configuration or error in function.
+            var configErrorMessage = "Could not find configuration or an unknown error has occurred.";
+            log.Debug(configErrorMessage);
+            return configErrorMessage;
+        }
+
+
+
         /// <summary>
         /// Attempts to Load all world data present from the appropriate downloaded folder, into a name database with the name collected from the config.
         /// </summary>
@@ -326,12 +466,18 @@ namespace ACE.Database
                 var localDataPath = ConfigManager.Config.ContentServer.LocalDataPath;
                 if (CheckLocalDataPath(localDataPath))
                 {
+                    RedeploymentActive = true;
                     // Setup the database requirements.
                     Initialize();
                     // Download the database files from Github:
                     if (CheckLocalDataPath(Path.GetFullPath(Path.Combine(localDataPath, WoldGithubBaseSqlPath))))
+                    {
+                        log.Debug("Downloading World Base SQL.");
                         RetrieveWebContent(ConfigManager.Config.ContentServer.WorldBaseUrl, Path.GetFullPath(Path.Combine(localDataPath, WoldGithubBaseSqlPath, WoldGithubBaseSqlFile)));
+                    }
+                    log.Debug("Downloading World Update Folder.");
                     RetrieveGithubFolder(ConfigManager.Config.ContentServer.WorldUpdateUrl);
+                    log.Debug("Downloading ACE-World Archive.");
                     RetreieveWorldData();
 
                     var databaseName = ConfigManager.Config.MySql.World.Database;
@@ -364,7 +510,10 @@ namespace ACE.Database
                         if (File.Exists(worldBase))
                             ReadAndLoadScript(worldBase, databaseName);
                         else
+                        {
+                            RedeploymentActive = false;
                             return "There was an error locating the WorldBase.sql file!";
+                        }
 
                         // Second, find all of the sql files in directory, and load them
                         var files = from file in Directory.EnumerateFiles(worldDataPath) where !file.Contains(".txt") select new { File = file };
@@ -394,9 +543,12 @@ namespace ACE.Database
                             errorMessage += " Inner: " + error.InnerException.Message;
                         }
                         log.Debug(errorMessage);
+                        RedeploymentActive = false;
                         return errorMessage;
                     }
                     // Success
+                    log.Debug("Finished redeployment!");
+                    RedeploymentActive = false;
                     return null;
                 }
                 var invalidDownloadPath = "Invalid Download path.";

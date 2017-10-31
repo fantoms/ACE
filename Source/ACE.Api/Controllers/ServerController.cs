@@ -45,11 +45,11 @@ namespace ACE.Api.Controllers
         [SwaggerResponse(HttpStatusCode.MethodNotAllowed, "You have unexported changes in your database.  Please specify 'force = true' in your request.", typeof(SimpleMessage))]
         public HttpResponseMessage RedeployWorldDatabase(RedeployRequest request)
         {
-            //TODO: Check to determine if a userModified flag has been set in the database or force == true
+            if (Database.RemoteContentSync.RedeploymentActive)
+                return Request.CreateResponse(HttpStatusCode.MethodNotAllowed, "A Redeployment already in progress!");
+            var forceDeploy = Request.RequestUri.Query.ToLowerInvariant().Contains("request.force=true") ? true : false;
+            // Check to determine if a userModified flag has been set in the database
             var modifiedFlagPresent = WorldDb.UserModifiedFlagPresent();
-
-            var forceDeploy = (request != null) ? request.ForceDeploy : false;
-
             if (!modifiedFlagPresent || forceDeploy)
             {
                 string errorResult = Database.RemoteContentSync.RedeployWorldDatabase();

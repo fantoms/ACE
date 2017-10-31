@@ -11,6 +11,13 @@ namespace ACE.Common
     public class ContentServerConfiguration
     {
         /// <summary>
+        /// Raw URL to current World SQL Update Folder.
+        /// </summary>
+        [DefaultValue("https://api.github.com/repositories/79078680/contents/Database/")]
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public string DatabaseUrl { get; set; }
+
+        /// <summary>
         /// Raw URL to current Base SQL File.
         /// </summary>
         [DefaultValue("https://raw.githubusercontent.com/ACEmulator/ACE/master/Database/Base/WorldBase.sql")]
