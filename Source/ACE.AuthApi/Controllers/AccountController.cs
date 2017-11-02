@@ -12,6 +12,9 @@ using System.Web.Http;
 
 namespace ACE.AuthApi.Controllers
 {
+    /// <summary>
+    ///
+    /// </summary>
     public class AccountController : BaseController
     {
         /// <summary>
@@ -44,6 +47,9 @@ namespace ACE.AuthApi.Controllers
             return account;
         }
 
+        /// <summary>
+        ///
+        /// </summary>
         [HttpPost]
         [AllowAnonymous]
         [SwaggerResponse(HttpStatusCode.OK, "Auth successful", typeof(RegisterResponse))]
@@ -52,6 +58,9 @@ namespace ACE.AuthApi.Controllers
             return Request.CreateResponse(HttpStatusCode.NotImplemented);
         }
 
+        /// <summary>
+        ///
+        /// </summary>
         [HttpGet]
         [AceAuthorize]
         [SwaggerResponse(HttpStatusCode.OK, Type = typeof(Account))]

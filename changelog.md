@@ -1,4 +1,19 @@
 # ACEmulator Change Log
+### 2017-10-30
+[Mogwai]
+* implemented updating of weenies in ace-world necessary for crowd-sourced content creation
+* added database unit tests to AppVeyor build
+
+### 2017-11-01
+[Ripley]
+* Updated EmoteCategory, EmoteType, and SpellType enums.
+* Add CombatStyle enum.
+* Rebased SQL scripts.
+* Changed all PropertyInt properties from uint to int.
+** NOTE: ACE-World database version required to be 0.2.7 or higher from this point forward. **
+* Todo/Fixme: Combat Stances don't work properly due to GetInventoryItem issue.
+* Cleaned up StyleCop issues.
+* Updated README with ACE-World requirement.
 
 ### 2017-10-27
 [OptimShi]

@@ -19,6 +19,9 @@ namespace ACE.Api.Controllers
     /// </summary>
     public class ServerController : BaseController
     {
+        /// <summary>
+        ///
+        /// </summary>
         [HttpGet]
         [SwaggerResponse(HttpStatusCode.OK, Type = typeof(ServerInformation))]
         public HttpResponseMessage Information()
