@@ -11,21 +11,37 @@ namespace ACE.Common
     public class ContentServerConfiguration
     {
         /// <summary>
-        /// Raw URL to current World SQL Update Folder.
+        /// Api URL to current Database root Folder.
         /// </summary>
         [DefaultValue("https://api.github.com/repositories/79078680/contents/Database/")]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string DatabaseUrl { get; set; }
 
         /// <summary>
-        /// Raw URL to current Base SQL File.
+        /// Api URL to current Database Base SQL Folder.
+        /// </summary>
+        [DefaultValue("https://api.github.com/repositories/79078680/contents/Database/Base/")]
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public string DatabaseBaseUrl { get; set; }
+
+        /// <summary>
+        /// Api URL to current Database SQL Updates Folder.
+        /// </summary>
+        [DefaultValue("https://api.github.com/repositories/79078680/contents/Database/Update/")]
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public string DatabaseUpdatesUrl { get; set; }
+
+        // ** Below is for the World update functions, specifically **/
+
+        /// <summary>
+        /// Raw file url for the WorldBase file.
         /// </summary>
         [DefaultValue("https://raw.githubusercontent.com/ACEmulator/ACE/master/Database/Base/WorldBase.sql")]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string WorldBaseUrl { get; set; }
 
         /// <summary>
-        /// Raw URL to current World SQL Update Folder.
+        /// API URL to current World SQL Update Folder metadata.
         /// </summary>
         [DefaultValue("https://api.github.com/repositories/79078680/contents/Database/Update/World/")]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]

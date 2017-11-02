@@ -139,10 +139,7 @@ namespace ACE.Database
                 {
                     return null;
                 }
-                finally
-                {
-                    CaptureWebHeaderData(w.ResponseHeaders);
-                }
+                CaptureWebHeaderData(w.ResponseHeaders);
                 return (result);
             }
         }
@@ -163,6 +160,12 @@ namespace ACE.Database
             }
             log.Debug($"Troubles downloading {url} {destinationFilePath}");
             return false;
+        }
+
+        private static string readApiContent(string base64string)
+        {
+            var bin = Convert.FromBase64String(base64string);
+            return Encoding.UTF8.GetString(bin);
         }
 
         /// <summary>
@@ -262,13 +265,128 @@ namespace ACE.Database
             return false;
         }
 
-        /// <summary>
-        /// Can be used to download the entire database folder at a high cost to the Github API Request count.
-        /// </summary>
-        /// <returns></returns>
-        public static bool RetreiveAllDatabaseScripts()
+        private static GithubResourceType parseResourceType(string inputType)
         {
-            return RetrieveGithubFolder("https://api.github.com/repositories/79078680/contents/Database/");
+            GithubResourceType newType = GithubResourceType.Unknown;
+            Enum.TryParse(inputType, out newType);
+            return newType;
+        }
+
+        private static Tuple<string,GithubResourceType> getDatabaseNameAndResourceType(string searchString, string fileName)
+        {
+            var localType = GithubResourceType.Unknown;
+            var databaseName = string.Empty;
+            if (searchString.Contains(".txt"))
+            {
+                localType = GithubResourceType.TextFile;
+            }
+            else if (searchString.Contains("/Base"))
+            {
+                localType = GithubResourceType.SqlBaseFile;
+                if (fileName.Contains("AuthenticationBase"))
+                {
+                    databaseName = DefaultDatabaseNames[0];
+                }
+                else if (fileName.Contains("ShardBase"))
+                {
+                    databaseName = DefaultDatabaseNames[1];
+                }
+                else if (fileName.Contains("WorldBase"))
+                {
+                    databaseName = DefaultDatabaseNames[2];
+                }
+            }
+            else if (searchString.Contains("/Updates"))
+            {
+                localType = GithubResourceType.SqlUpdateFile;
+                if (searchString.Contains("/Authentication"))
+                {
+                    databaseName = DefaultDatabaseNames[0];
+                }
+                else if (searchString.Contains("/Shard"))
+                {
+                    databaseName = DefaultDatabaseNames[1];
+                }
+                else if (searchString.Contains("/World"))
+                {
+                    databaseName = DefaultDatabaseNames[2];
+                }
+            } else if (searchString.Contains(".sql"))
+            {
+                localType = GithubResourceType.SqlFile;
+            }
+            return Tuple.Create<string, GithubResourceType>(databaseName, localType);
+        }
+
+        public static List<GithubResourceData> RetrieveGithubFolderList(string url)
+        {
+            // Check to see if the input is usable and the data path is valid
+            if (url?.Length > 0)
+            {
+                List<GithubResourceData> DownloadList = new List<GithubResourceData>();
+                var localDataPath = Path.GetFullPath(ConfigManager.Config.ContentServer.LocalDataPath);
+                List<string> directoryUrls = new List<string>();
+                directoryUrls.Add(url);
+                // Recurse api and collect all downloads
+                while (directoryUrls.Count > 0)
+                {
+                    var currentUrl = directoryUrls.LastOrDefault();
+                    var content = RetrieveWebString(currentUrl);
+                    var repoFiles = content != null ? JArray.Parse(content) : null;
+                    if (repoFiles?.Count > 0)
+                    {
+                        foreach (var file in repoFiles)
+                        {
+                            var search = file["path"].ToString();
+                            if (search.Contains("Database"))
+                            {
+                                if (file["type"].ToString() == "dir")
+                                {
+                                    directoryUrls.Add(file["url"].ToString());
+                                    CheckLocalDataPath(Path.Combine(localDataPath, file["path"].ToString()));
+                                }
+                                else
+                                {
+                                    var fileName = file["name"].ToString();
+                                    var info = getDatabaseNameAndResourceType(search, fileName);
+                                    var databaseName = info.Item1;
+                                    var localType = info.Item2;
+                                    DownloadList.Add(new GithubResourceData()
+                                    {
+                                        DatabaseName = databaseName,
+                                        Type = localType,
+                                        SourceUri = file["download_url"].ToString(),
+                                        SourcePath = file["path"].ToString(),
+                                        FileName = file["name"].ToString(),
+                                        FilePath = Path.GetFullPath(Path.Combine(localDataPath, file["path"].ToString())),
+                                        FileSize = (int)file["size"],
+                                        Hash = file["sha"].ToString()
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    // Cancel because the string was caught in exception
+                    if (repoFiles == null)
+                    {
+                        log.Debug($"No files found within {currentUrl}");
+                        return null;
+                    }
+                    // Remove the parsed url
+                    directoryUrls.Remove(currentUrl);
+                }
+                // Download the files from the downloads tuple
+                foreach (var download in DownloadList)
+                {
+                    // If we cannot Retrieve content, return false for failure
+                    if (!RetrieveWebContent(download.SourceUri, download.FilePath))
+                        log.Debug($"Trouble downloading {download.SourceUri} : {download.FilePath}");
+                }
+                return DownloadList;
+
+            }
+            log.Debug($"Invalid Url provided, please check configuration.");
+            return null;
         }
 
         /// <summary>
@@ -321,6 +439,53 @@ namespace ACE.Database
             return $"You have exhausted your Github API Limit limt per hour. Please wait till {ApiResetTIme}";
         }
 
+        public static GithubResourceData RetreieveWorldArchive()
+        {
+            if (RemaingApiCalls < TotalApiCallsAvailable)
+            {
+                var resource = new GithubResourceData();
+                // attempt to download the latest ACE-World json data
+                try
+                {
+                    using (WebClient webClient = new WebClient())
+                    {
+                        WebClient w = new WebClient();
+                        // Header is required for github
+                        w.Headers.Add("User-Agent", "ACEManager");
+                        var json = JObject.Parse(w.DownloadString(ConfigManager.Config.ContentServer.WorldArchiveUrl));
+                        // Extract relevant details
+                        resource.SourceUri = (string)json["assets"][0]["browser_download_url"];
+                        resource.FileName = (string)json["assets"][0]["name"];
+                        //(string)json["name"] + (string)json["tag_name"] + (string)json["published_at"];
+                        // Collect header info that tells how much retries and time left till reset.
+                        CaptureWebHeaderData(w.ResponseHeaders);
+                    }
+                }
+                catch (Exception error)
+                {
+                    log.Debug($"Trouble capturing metadata from the Github API. {error.ToString()}");
+                    return null;
+                }
+                resource.FilePath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, resource.FileName));
+
+                if (RetrieveWebContent(resource.SourceUri, resource.FilePath))
+                {
+                    // Extract & delete
+                    var extractionError = ExtractZip(resource.FilePath, Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, "Database\\ACE-World\\")));
+                    if (extractionError?.Length > 0)
+                    {
+                        log.Debug($"Could not extract {resource.FilePath} {extractionError}");
+                        return null;
+                    }
+                    resource.DatabaseName = "ace_world";
+                }
+                return resource;
+            }
+            // No more calls left, detail the time remaining
+            log.Error($"You have exhausted your Github API Limit limt per hour. Please wait till {ApiResetTIme}");
+            return null;
+        }
+
         private static void ResetDatabase(string databaseName)
         {
             // Delete Database, to clear everything including stored procs and views.
@@ -338,10 +503,35 @@ namespace ACE.Database
             }
         }
 
+        private static void parseDownloads(List<GithubResourceData> auth, List<GithubResourceData> shard, List<GithubResourceData> world, List<GithubResourceData> list)
+        {
+            foreach (var download in list)
+            {
+                if (download.DatabaseName == DefaultDatabaseNames[0])
+                {
+                    auth.Add(download);
+                }
+                else if (download.DatabaseName == DefaultDatabaseNames[1])
+                {
+                    shard.Add(download);
+                }
+                else if (download.DatabaseName == DefaultDatabaseNames[2])
+                {
+                    world.Add(download);
+                }
+            }
+        }
+
         /// <summary>
         /// Attempts to Load all databases and data from the appropriate downloaded folder.
         /// </summary>
-        public static string RedeployAllDatabase()
+        /// <remarks>                        
+        ///Load Data from 2 or 3 locations, in sequential order:
+        ///  First Search Path: ${Downloads}\\Database\\Base\\
+        ///  Second Search Path if updating world database: ACE-World\\${WorldGithubFilename}
+        ///  Third Search Path: ${Downloads}\\Database\\Updates\\
+        ///</remarks>
+        public static string RedeployAllDatabases()
         {
             if (RedeploymentActive)
                 return "There is already an active redeployment in progress...";
@@ -357,86 +547,82 @@ namespace ACE.Database
                     // Setup the database requirements.
                     Initialize();
                     // Download the database files from Github:
-                    log.Debug("Downloading all database files from Github Folder.");
-                    RetrieveGithubFolder(ConfigManager.Config.ContentServer.WorldUpdateUrl);
-                    log.Debug("Downloading ACE-World Archive.");
-                    RetreieveWorldData();
-
-                    List<string> databaseNames = new List<string>();
-
-                    databaseNames.Add(ConfigManager.Config.MySql.Authentication.Database);
-                    databaseNames.Add(ConfigManager.Config.MySql.Shard.Database);
-                    databaseNames.Add(ConfigManager.Config.MySql.World.Database);
-                    foreach (var databaseName in databaseNames)
+                    log.Debug("Attempting download of all database files from Github Folder.");
+                    var DatabaseFiles = RetrieveGithubFolderList(ConfigManager.Config.ContentServer.DatabaseUrl);
+                    if (DatabaseFiles?.Count > 0)
                     {
-                        ResetDatabase(databaseName);
+                        log.Debug("Downloading ACE-World Archive.");
+                        //RetreieveWorldData();
 
-                        //A Github Database File Resource Can have
-                        // A Default DatabaseName as Destination
-                        // A Source URL Path
-                        // A Source URL
-                        // A Destination Path
-                        // A TagName?
-                        // An ACE-World Release VersionNumber?
-                        // An Api Release Date
+                        Dictionary<string, GithubResource> resources = new Dictionary<string, GithubResource>();
 
-                        //Github download can have:
-                        // A Github Resource
-                        // A File Size
-                        // A File Name
-                        // A File Extension
-                        // 
+                        resources.Add("ace_auth", new GithubResource() { DatabaseName = "ace_auth", Downloads = new List<GithubResourceData>() });
+                        resources.Add("ace_shard", new GithubResource() { DatabaseName = "ace_shard", Downloads = new List<GithubResourceData>() });
+                        resources.Add("ace_world", new GithubResource() { DatabaseName = "ace_world", Downloads = new List<GithubResourceData>() });
 
-                        // Load World Data from 3 locations, in sequential order:
-                        //  First Search Path: ${Download}Database\\Base\\
-                        //  Second Search Path: Updates\\World\\
-                        //  Third Search Path: ACE-World\\${WorldGithubFilename}
-                        var dbBase = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath));
-                        //LoadBase(dbBase);
-                        var worldDataPath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WorldDataPath));
-                        var worldUpdatePath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WoldGithubUpdatePath));
+                        parseDownloads(resources["ace_auth"].Downloads, resources["ace_shard"].Downloads, resources["ace_world"].Downloads, DatabaseFiles);
 
-                        try
+                        foreach (var resource in resources.Values)
                         {
-                            // First sequence, load the world base
-                            if (File.Exists(dbBase))
-                                ReadAndLoadScript(dbBase, databaseName);
-                            else
-                                return "There was an error locating the WorldBase.sql file!";
 
-                            // Second, find all of the sql files in directory, and load them
-                            var files = from file in Directory.EnumerateFiles(worldDataPath) where !file.Contains(".txt") select new { File = file };
-                            if (files.Count() > 0)
+                            if (resource.Downloads.Count == 0) continue;
+                            var baseFile = string.Empty;
+                            List<string> updates = new List<string>();
+                            //ResetDatabase(databaseName);
+                            foreach (var download in resource.Downloads)
                             {
-                                foreach (var file in files)
+                                if (download.Type == GithubResourceType.SqlBaseFile)
                                 {
-                                    ReadAndLoadScript(file.File, databaseName);
+                                    baseFile = download.FilePath;
+                                }
+                                if (download.Type == GithubResourceType.SqlUpdateFile)
+                                {
+                                    updates.Add(download.FilePath);
                                 }
                             }
 
-                            // Last, find all of the sql files in directory, and load them
-                            files = from file in Directory.EnumerateFiles(worldUpdatePath) where !file.Contains(".txt") select new { File = file };
-                            if (files.Count() > 0)
+                            var worldArchivePath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WorldDataPath, WorldGithubFilename));
+
+                            try
                             {
-                                foreach (var file in files)
+                                // First sequence, load the world base
+                                if (File.Exists(baseFile))
+                                    ReadAndLoadScript(baseFile, resource.DatabaseName);
+                                else
+                                    Console.WriteLine($"There was an error locating the base file {baseFile} for {resource.DatabaseName}!");
+
+                                // Second, if this is the world database, we will load ACE-World
+                                if (resource.DatabaseName == DefaultDatabaseNames[2])
                                 {
-                                    ReadAndLoadScript(file.File, databaseName);
+                                    ReadAndLoadScript(worldArchivePath, resource.DatabaseName);
+                                }
+
+                                // Last, 
+                                if (updates.Count() > 0)
+                                {
+                                    foreach (var file in updates)
+                                    {
+                                        ReadAndLoadScript(file, resource.DatabaseName);
+                                    }
                                 }
                             }
-                        }
-                        catch (Exception error)
-                        {
-                            var errorMessage = error.Message;
-                            if (error.InnerException != null)
+                            catch (Exception error)
                             {
-                                errorMessage += " Inner: " + error.InnerException.Message;
+                                var errorMessage = error.Message;
+                                if (error.InnerException != null)
+                                {
+                                    errorMessage += " Inner: " + error.InnerException.Message;
+                                }
+                                log.Debug(errorMessage);
+                                return errorMessage;
                             }
-                            log.Debug(errorMessage);
-                            return errorMessage;
+                            // Success
+                            return null;
                         }
-                        // Success
-                        return null;
                     }
+                    var couldNotDownload = "Troubles downloading content, please wait one hour or investigate the API call errors.";
+                    log.Debug(couldNotDownload);
+                    return couldNotDownload;
                 }
                 var invalidDownloadPath = "Invalid Download path.";
                 log.Debug(invalidDownloadPath);
@@ -447,8 +633,6 @@ namespace ACE.Database
             log.Debug(configErrorMessage);
             return configErrorMessage;
         }
-
-
 
         /// <summary>
         /// Attempts to Load all world data present from the appropriate downloaded folder, into a name database with the name collected from the config.

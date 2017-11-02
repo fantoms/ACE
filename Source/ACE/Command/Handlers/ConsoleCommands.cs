@@ -118,11 +118,13 @@ namespace ACE.Command.Handlers
             }
             if (forceRedploy || !userModifiedFlagPresent)
             {
-                string errorResult = Database.RemoteContentSync.RedeployWorldDatabase();
+                string errorResult = Database.RemoteContentSync.RedeployAllDatabases();
+                // Database.RemoteContentSync.RedeployWorldDatabase();
                 if (errorResult == null)
                     Console.WriteLine("The World Database has been deployed!");
                 else
                     Console.WriteLine($"There was an error durring your request. {errorResult}");
+                return;
             }
             Console.WriteLine("User created content has been detected in the database. Please export the current database or include the 'force' parameter with this command.");
         }

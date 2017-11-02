@@ -16,8 +16,7 @@ namespace ACE.Api.Models
         /// Boolean value representing the forced redeployment. Set this to true, too overwrite/wipe a database.
         /// </summary>
         [JsonProperty("force")]
-        public bool ForceDeploy { get;
-            set; } = false;
+        public bool ForceDeploy { get; set; } = false;
 
         /// <summary>
         /// Default Redeployment Request
