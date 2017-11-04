@@ -564,20 +564,19 @@ namespace ACE.Database
                         log.Debug("Downloading ACE-World Archive.");
                         RetreieveWorldData();
 
-                        Dictionary<string, GithubResource> resources = new Dictionary<string, GithubResource>();
+                        Dictionary<string, GithubResourceList> resources = new Dictionary<string, GithubResourceList>();
 
-                        resources.Add("ace_auth", new GithubResource() { DatabaseName = "ace_auth", Downloads = new List<GithubResourceData>() });
-                        resources.Add("ace_shard", new GithubResource() { DatabaseName = "ace_shard", Downloads = new List<GithubResourceData>() });
-                        resources.Add("ace_world", new GithubResource() { DatabaseName = "ace_world", Downloads = new List<GithubResourceData>() });
+                        resources.Add(DefaultDatabaseNames[0], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[0], ConfigDatabaseName = ConfigManager.Config.MySql.Authentication.Database, Downloads = new List<GithubResourceData>() });
+                        resources.Add(DefaultDatabaseNames[1], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[1], ConfigDatabaseName = ConfigManager.Config.MySql.Shard.Database, Downloads = new List<GithubResourceData>() });
+                        resources.Add(DefaultDatabaseNames[2], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[2], ConfigDatabaseName = ConfigManager.Config.MySql.World.Database, Downloads = new List<GithubResourceData>() });
 
-                        parseDownloads(resources["ace_auth"].Downloads, resources["ace_shard"].Downloads, resources["ace_world"].Downloads, DatabaseFiles);
+                        parseDownloads(resources[DefaultDatabaseNames[0]].Downloads, resources[DefaultDatabaseNames[0]].Downloads, resources[DefaultDatabaseNames[0]].Downloads, DatabaseFiles);
 
                         foreach (var resource in resources.Values)
                         {
                             if (resource.Downloads.Count == 0) continue;
-
                             // Delete and receate the database
-                            ResetDatabase(resource.DatabaseName);
+                            ResetDatabase(resource.ConfigDatabaseName);
 
                             var baseFile = string.Empty;
                             List<string> updates = new List<string>();
@@ -602,16 +601,16 @@ namespace ACE.Database
                             {
                                 // First sequence, load the world base
                                 if (File.Exists(baseFile))
-                                    ReadAndLoadScript(baseFile, resource.DatabaseName);
+                                    ReadAndLoadScript(baseFile, resource.ConfigDatabaseName);
                                 else
                                 {
-                                    var errorMessage = $"There was an error locating the base file {baseFile} for {resource.DatabaseName}!";
+                                    var errorMessage = $"There was an error locating the base file {baseFile} for {resource.DefaultDatabaseName}!";
                                     log.Debug(errorMessage);
                                     Console.WriteLine(errorMessage);
                                 }
 
                                 // Second, if this is the world database, we will load ACE-World
-                                if (resource.DatabaseName == DefaultDatabaseNames[2])
+                                if (resource.DefaultDatabaseName == DefaultDatabaseNames[2])
                                 {
                                     var worldDataPath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WorldDataPath));
                                     var files = from file in Directory.EnumerateFiles(worldDataPath) where !file.Contains(".txt") select new { File = file };
@@ -620,7 +619,7 @@ namespace ACE.Database
                                         // Load all SQL files within the ACE-World folder
                                         foreach (var file in files)
                                         {                                            
-                                            ReadAndLoadScript(file.File, resource.DatabaseName);
+                                            ReadAndLoadScript(file.File, resource.ConfigDatabaseName);
                                         }
                                     }
                                 }
@@ -630,7 +629,7 @@ namespace ACE.Database
                                 {
                                     foreach (var file in updates)
                                     {
-                                        ReadAndLoadScript(file, resource.DatabaseName);
+                                        ReadAndLoadScript(file, resource.ConfigDatabaseName);
                                     }
                                 }
                             }
