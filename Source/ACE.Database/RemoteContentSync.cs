@@ -624,7 +624,7 @@ namespace ACE.Database
 
                                 // First sequence, load the world base
                                 if (File.Exists(baseFile))
-                                    ReadAndLoadScript(baseFile, resource.ConfigDatabaseName);
+                                    ReadAndLoadScript(baseFile, resource.ConfigDatabaseName, resource.DefaultDatabaseName);
                                 else
                                 {
                                     var errorMessage = $"There was an error locating the base file {baseFile} for {resource.DefaultDatabaseName}!";
@@ -644,7 +644,7 @@ namespace ACE.Database
                                         // Load all SQL files within the ACE-World folder
                                         foreach (var file in files)
                                         {                                            
-                                            ReadAndLoadScript(file.File, resource.ConfigDatabaseName);
+                                            ReadAndLoadScript(file.File, resource.ConfigDatabaseName, resource.DefaultDatabaseName);
                                         }
                                     }
                                 }
@@ -654,7 +654,7 @@ namespace ACE.Database
                                 {
                                     foreach (var file in updates)
                                     {
-                                        ReadAndLoadScript(file, resource.ConfigDatabaseName);
+                                        ReadAndLoadScript(file, resource.ConfigDatabaseName, resource.DefaultDatabaseName);
                                     }
                                 }
                             }
@@ -750,7 +750,7 @@ namespace ACE.Database
                     {
                         // First sequence, load the world base
                         if (File.Exists(worldBase))
-                            ReadAndLoadScript(worldBase, databaseName);
+                            ReadAndLoadWorldScript(worldBase, databaseName);
                         else
                         {
                             RedeploymentActive = false;
@@ -763,7 +763,7 @@ namespace ACE.Database
                         {
                             foreach (var file in files)
                             {
-                                ReadAndLoadScript(file.File, databaseName);
+                                ReadAndLoadWorldScript(file.File, databaseName);
                             }
                         }
 
@@ -773,7 +773,7 @@ namespace ACE.Database
                         {
                             foreach (var file in files)
                             {
-                                ReadAndLoadScript(file.File, databaseName);
+                                ReadAndLoadWorldScript(file.File, databaseName);
                             }
                         }
                     }
@@ -803,16 +803,28 @@ namespace ACE.Database
             return configErrorMessage;
         }
 
-        private static string ReadAndLoadScript(string sqlFile, string databaseName)
+        private static string ReadAndLoadScript(string sqlFile, string databaseName, string defaultDatabase)
         {
             Console.Write(Environment.NewLine + $"{databaseName} Loading {sqlFile}!..");
             log.Debug($"Reading {sqlFile} and executing against {databaseName}");
             // open file into string
             string sqlInputFile = File.ReadAllText(sqlFile);
-            if (!DefaultDatabaseNames.Contains(databaseName))
+            if (databaseName != defaultDatabase)
             {
-                    sqlInputFile = sqlInputFile.Replace(DefaultDatabaseNames[0], databaseName);
-                    sqlInputFile = sqlInputFile.Replace(DefaultDatabaseNames[1], databaseName);
+                sqlInputFile = sqlInputFile.Replace(defaultDatabase, databaseName);
+            }
+            ResetDatabaseConnection(databaseName);
+            return CurrentDb.ExecuteSqlQueryOrScript(sqlInputFile, databaseName, true);
+        }
+
+        private static string ReadAndLoadWorldScript(string sqlFile, string databaseName)
+        {
+            Console.Write(Environment.NewLine + $"{databaseName} Loading {sqlFile}!..");
+            log.Debug($"Reading {sqlFile} and executing against {databaseName}");
+            // open file into string
+            string sqlInputFile = File.ReadAllText(sqlFile);
+            if (databaseName != DefaultDatabaseNames[2])
+            {
                     sqlInputFile = sqlInputFile.Replace(DefaultDatabaseNames[2], databaseName);
             }
             ResetDatabaseConnection(databaseName);
