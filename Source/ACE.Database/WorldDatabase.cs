@@ -173,6 +173,9 @@ namespace ACE.Database
                 // Create a new AceObject from Weenie.
                 AceObject ao = GetObject(instance.WeenieClassId);
 
+                // Set the object's current location for this instance.
+                ao.Location = new Position(instance.LandblockRaw, instance.PositionX, instance.PositionY, instance.PositionZ, instance.RotationX, instance.RotationY, instance.RotationZ, instance.RotationW);
+
                 // Use the guid recorded by the PCAP.
                 // This step could eventually be removed if we want to let the GuidManager handle assigning guids for static objects, ignoring the recorded guids.
                 string cmsClone = ao.CurrentMotionState; // Make a copy of the CurrentMotionState for cloning
@@ -353,8 +356,8 @@ namespace ACE.Database
             {
                 where = where != null ? where + " AND " : "";
                 where += "`itemType` = ?";
-                var p = new MySqlParameter("", MySqlDbType.UInt32);
-                p.Value = (uint)criteria.ItemType.Value;
+                var p = new MySqlParameter("", MySqlDbType.Int32);
+                p.Value = (int)criteria.ItemType.Value;
                 mysqlParams.Add(p);
             }
 
@@ -362,8 +365,8 @@ namespace ACE.Database
             {
                 where = where != null ? where + " AND " : "";
                 where += "`weenieType` = ?";
-                var p = new MySqlParameter("", MySqlDbType.UInt32);
-                p.Value = (uint)criteria.WeenieType.Value;
+                var p = new MySqlParameter("", MySqlDbType.Int32);
+                p.Value = (int)criteria.WeenieType.Value;
                 mysqlParams.Add(p);
             }
 
