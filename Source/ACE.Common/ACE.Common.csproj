@@ -56,7 +56,7 @@
     <Compile Include="ApiServerConfiguration.cs" />
     <Compile Include="ContentServerConfiguration.cs" />
     <Compile Include="DatabaseConfiguration.cs" />
-    <Compile Include="GithubResourceData.cs" />
+    <Compile Include="GithubResource.cs" />
     <Compile Include="GithubResourceList.cs" />
     <Compile Include="GithubResoureType.cs" />
     <Compile Include="MasterConfiguration.cs" />

@@ -326,12 +326,12 @@ namespace ACE.Database
             return Tuple.Create<string, GithubResourceType>(databaseName, localType);
         }
 
-        public static List<GithubResourceData> RetrieveGithubFolderList(string url)
+        public static List<GithubResource> RetrieveGithubFolderList(string url)
         {
             // Check to see if the input is usable and the data path is valid
             if (url?.Length > 0)
             {
-                List<GithubResourceData> DownloadList = new List<GithubResourceData>();
+                List<GithubResource> DownloadList = new List<GithubResource>();
                 var localDataPath = Path.GetFullPath(ConfigManager.Config.ContentServer.LocalDataPath);
                 List<string> directoryUrls = new List<string>();
                 directoryUrls.Add(url);
@@ -359,7 +359,7 @@ namespace ACE.Database
                                     var info = getDatabaseNameAndResourceType(search, fileName);
                                     var databaseName = info.Item1;
                                     var localType = info.Item2;
-                                    DownloadList.Add(new GithubResourceData()
+                                    DownloadList.Add(new GithubResource()
                                     {
                                         DatabaseName = databaseName,
                                         Type = localType,
@@ -447,11 +447,11 @@ namespace ACE.Database
             return $"You have exhausted your Github API Limit limt per hour. Please wait till {ApiResetTIme}";
         }
 
-        public static GithubResourceData RetreieveWorldArchive()
+        public static GithubResource RetreieveWorldArchive()
         {
             if (RemaingApiCalls < TotalApiCallsAvailable)
             {
-                var resource = new GithubResourceData();
+                var resource = new GithubResource();
                 // attempt to download the latest ACE-World json data
                 try
                 {
@@ -511,7 +511,7 @@ namespace ACE.Database
             }
         }
 
-        private static void parseDownloads(List<GithubResourceData> auth, List<GithubResourceData> shard, List<GithubResourceData> world, List<GithubResourceData> list)
+        private static void parseDownloads(List<GithubResource> auth, List<GithubResource> shard, List<GithubResource> world, List<GithubResource> list)
         {
             foreach (var download in list)
             {
@@ -566,9 +566,9 @@ namespace ACE.Database
 
                         Dictionary<string, GithubResourceList> resources = new Dictionary<string, GithubResourceList>();
 
-                        resources.Add(DefaultDatabaseNames[0], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[0], ConfigDatabaseName = ConfigManager.Config.MySql.Authentication.Database, Downloads = new List<GithubResourceData>() });
-                        resources.Add(DefaultDatabaseNames[1], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[1], ConfigDatabaseName = ConfigManager.Config.MySql.Shard.Database, Downloads = new List<GithubResourceData>() });
-                        resources.Add(DefaultDatabaseNames[2], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[2], ConfigDatabaseName = ConfigManager.Config.MySql.World.Database, Downloads = new List<GithubResourceData>() });
+                        resources.Add(DefaultDatabaseNames[0], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[0], ConfigDatabaseName = ConfigManager.Config.MySql.Authentication.Database, Downloads = new List<GithubResource>() });
+                        resources.Add(DefaultDatabaseNames[1], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[1], ConfigDatabaseName = ConfigManager.Config.MySql.Shard.Database, Downloads = new List<GithubResource>() });
+                        resources.Add(DefaultDatabaseNames[2], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[2], ConfigDatabaseName = ConfigManager.Config.MySql.World.Database, Downloads = new List<GithubResource>() });
 
                         parseDownloads(resources[DefaultDatabaseNames[0]].Downloads, resources[DefaultDatabaseNames[0]].Downloads, resources[DefaultDatabaseNames[0]].Downloads, DatabaseFiles);
 
