@@ -118,7 +118,7 @@ namespace ACE.Command.Handlers
             }
             if (forceRedploy || !userModifiedFlagPresent)
             {
-                string errorResult = Database.RemoteContentSync.RedeployAllDatabases();
+                string errorResult = Database.RemoteContentSync.RedeployWorldDatabase();
                 // Database.RemoteContentSync.RedeployWorldDatabase();
                 if (errorResult == null)
                     Console.WriteLine("The World Database has been deployed!");
@@ -127,6 +127,36 @@ namespace ACE.Command.Handlers
                 return;
             }
             Console.WriteLine("User created content has been detected in the database. Please export the current database or include the 'force' parameter with this command.");
+        }
+
+        [CommandHandler("redeploy-all", AccessLevel.Developer, CommandHandlerFlag.ConsoleInvoke, 0, "Download and redeploy all database content, from github. WARNING: THIS WILL RESET ALL DATA!")]
+        public static void RedeployAllDatabases(Session session, params string[] parameters)
+        {
+            bool forceRedploy = false;
+            var userModifiedFlagPresent = DatabaseManager.World.UserModifiedFlagPresent();
+            if (parameters?.Length > 0)
+            {
+                string force = parameters[0];
+                if (force.Length > 0)
+                {
+                    if (force.ToLowerInvariant().Contains("force"))
+                    {
+                        Console.WriteLine("Force redeploy reached!");
+                        forceRedploy = true;
+                    }
+                }
+            }
+            if (forceRedploy)
+            {
+                string errorResult = Database.RemoteContentSync.RedeployAllDatabases();
+                // Database.RemoteContentSync.RedeployWorldDatabase();
+                if (errorResult == null)
+                    Console.WriteLine("All databases have been redeployed!");
+                else
+                    Console.WriteLine($"There was an error durring your request. {errorResult}");
+                return;
+            }
+            Console.WriteLine("You must also pass the 'force' parameter with this command, to start the database reset process.");
         }
     }
 }

@@ -60,7 +60,38 @@ namespace ACE.Api.Controllers
                 string errorResult = Database.RemoteContentSync.RedeployWorldDatabase();
 
                 if (errorResult == null)
-                    return Request.CreateResponse(HttpStatusCode.OK, "The World Database has been deployed!");
+                    return Request.CreateResponse(HttpStatusCode.OK, "The World Database has been redeployed!");
+                else
+                    return Request.CreateResponse(HttpStatusCode.InternalServerError, $"There was an error durring your request. {errorResult}");
+            }
+            return Request.CreateResponse(HttpStatusCode.MethodNotAllowed, "You have unexported changes in your database.  Please specify 'force = true' in your request.");
+        }
+
+        /// <summary>
+        /// Redeploys all sql scripts to reset all databases.  all changes that have not already been exported 
+        /// WILL BE LOST, and `user_modified` flags will all be reset to false.
+        /// </summary>
+        [HttpGet]
+        [AceAuthorize(AccessLevel.Developer)]
+        [SwaggerResponse(HttpStatusCode.Unauthorized, "Developer access level is required for this call.")]
+        [SwaggerResponse(HttpStatusCode.OK, "Redeploy successful.  Return message contains the sql log.", typeof(SimpleMessage))]
+        [SwaggerResponse(HttpStatusCode.InternalServerError, "Error occurred.  Return message contains exception details.", typeof(SimpleMessage))]
+        [SwaggerResponse(HttpStatusCode.MethodNotAllowed, "You have unexported changes in your database.  Please specify 'force = true' in your request.", typeof(SimpleMessage))]
+        public HttpResponseMessage RedeployAllDatabases(RedeployRequest request)
+        {
+            // Only allow one request at a time:
+            if (Database.RemoteContentSync.RedeploymentActive)
+                return Request.CreateResponse(HttpStatusCode.MethodNotAllowed, "A Redeployment already in progress!");
+            //TODO: Fix this hack, make the redeploy request object work properly:
+            var forceDeploy = Request.RequestUri.Query.ToLowerInvariant().Contains("request.force=true") ? true : false;
+            // Check to determine if a userModified flag has been set in the database
+            var modifiedFlagPresent = WorldDb.UserModifiedFlagPresent();
+            if (!modifiedFlagPresent || forceDeploy)
+            {
+                string errorResult = Database.RemoteContentSync.RedeployAllDatabases();
+
+                if (errorResult == null)
+                    return Request.CreateResponse(HttpStatusCode.OK, "All Databases have been redeployed; the databases should now be completely reset. Please remember to readd your user accounts!");
                 else
                     return Request.CreateResponse(HttpStatusCode.InternalServerError, $"There was an error durring your request. {errorResult}");
             }

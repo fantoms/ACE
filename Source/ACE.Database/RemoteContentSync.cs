@@ -224,28 +224,36 @@ namespace ACE.Database
                 while (directoryUrls.Count > 0)
                 {
                     var currentUrl = directoryUrls.LastOrDefault();
-                    var repoFiles = JArray.Parse(RetrieveWebString(currentUrl));
-                    var repoPath = Path.Combine(localDataPath, Path.GetDirectoryName(repoFiles[0]["path"].ToString()));
-                    CheckLocalDataPath(repoPath);
-                    if (repoFiles?.Count > 0)
+                    var apiRequestData = RetrieveWebString(currentUrl);
+                    if (apiRequestData != null)
                     {
-                        foreach (var file in repoFiles)
+                        var repoFiles = JArray.Parse(apiRequestData);
+                        var repoPath = Path.Combine(localDataPath, Path.GetDirectoryName(repoFiles[0]["path"].ToString()));
+                        CheckLocalDataPath(repoPath);
+                        if (repoFiles?.Count > 0)
                         {
-                            if (file["type"].ToString() == "dir")
+                            foreach (var file in repoFiles)
                             {
-                                directoryUrls.Add(file["url"].ToString());
-                                CheckLocalDataPath(Path.Combine(localDataPath, file["path"].ToString()));
-                            }
-                            else
-                            {
-                                downloads.Add(new Tuple<string, string>(item1: file["download_url"].ToString(), item2: Path.Combine(localDataPath, file["path"].ToString())));
+                                if (file["type"].ToString() == "dir")
+                                {
+                                    directoryUrls.Add(file["url"].ToString());
+                                    CheckLocalDataPath(Path.Combine(localDataPath, file["path"].ToString()));
+                                }
+                                else
+                                {
+                                    downloads.Add(new Tuple<string, string>(item1: file["download_url"].ToString(), item2: Path.Combine(localDataPath, file["path"].ToString())));
+                                }
                             }
                         }
-                    }
-                    // Cancel because the string was caught in exception
-                    if (repoFiles == null)
+                        // Cancel because the string was caught in exception
+                        if (repoFiles == null)
+                        {
+                            log.Debug($"No files found within {repoPath}");
+                            return false;
+                        }
+                    } else
                     {
-                        log.Debug($"No files found within {repoPath}");
+                        log.Debug($"Issue found calling API.");
                         return false;
                     }
                     // Remove the parsed url
@@ -540,10 +548,12 @@ namespace ACE.Database
             // Determine if the config settings appear valid:
             if (ConfigManager.Config.MySql.World.Database?.Length > 0 && ConfigManager.Config.ContentServer.LocalDataPath?.Length > 0)
             {
+                RedeploymentActive = true;
                 // Check the data path and create if needed.
                 var localDataPath = ConfigManager.Config.ContentServer.LocalDataPath;
                 if (CheckLocalDataPath(localDataPath))
                 {
+                    RedeploymentActive = true;
                     // Setup the database requirements.
                     Initialize();
                     // Download the database files from Github:
@@ -564,11 +574,15 @@ namespace ACE.Database
 
                         foreach (var resource in resources.Values)
                         {
-
                             if (resource.Downloads.Count == 0) continue;
+
+                            // Delete and receate the database
+                            ResetDatabase(resource.DatabaseName);
+
                             var baseFile = string.Empty;
                             List<string> updates = new List<string>();
-                            //ResetDatabase(databaseName);
+                            
+                            // Seporate base files from updates
                             foreach (var download in resource.Downloads)
                             {
                                 if (download.Type == GithubResourceType.SqlBaseFile)
@@ -581,6 +595,7 @@ namespace ACE.Database
                                 }
                             }
 
+                            // Grab the archive folder path
                             var worldArchivePath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WorldDataPath, WorldGithubFilename));
 
                             try
@@ -589,7 +604,11 @@ namespace ACE.Database
                                 if (File.Exists(baseFile))
                                     ReadAndLoadScript(baseFile, resource.DatabaseName);
                                 else
-                                    Console.WriteLine($"There was an error locating the base file {baseFile} for {resource.DatabaseName}!");
+                                {
+                                    var errorMessage = $"There was an error locating the base file {baseFile} for {resource.DatabaseName}!";
+                                    log.Debug(errorMessage);
+                                    Console.WriteLine(errorMessage);
+                                }
 
                                 // Second, if this is the world database, we will load ACE-World
                                 if (resource.DatabaseName == DefaultDatabaseNames[2])
@@ -598,14 +617,15 @@ namespace ACE.Database
                                     var files = from file in Directory.EnumerateFiles(worldDataPath) where !file.Contains(".txt") select new { File = file };
                                     if (files.Count() > 0)
                                     {
+                                        // Load all SQL files within the ACE-World folder
                                         foreach (var file in files)
-                                        {
+                                        {                                            
                                             ReadAndLoadScript(file.File, resource.DatabaseName);
                                         }
                                     }
                                 }
 
-                                // Last, 
+                                // Last, run all updates
                                 if (updates.Count() > 0)
                                 {
                                     foreach (var file in updates)
@@ -622,16 +642,20 @@ namespace ACE.Database
                                     errorMessage += " Inner: " + error.InnerException.Message;
                                 }
                                 log.Debug(errorMessage);
+                                RedeploymentActive = false;
                                 return errorMessage;
                             }
                         }
+                        RedeploymentActive = false;
                         // Success
                         return null;
                     }
+                    RedeploymentActive = false;
                     var couldNotDownload = "Troubles downloading content, please wait one hour or investigate the API call errors.";
                     log.Debug(couldNotDownload);
                     return couldNotDownload;
                 }
+                RedeploymentActive = false;
                 var invalidDownloadPath = "Invalid Download path.";
                 log.Debug(invalidDownloadPath);
                 return invalidDownloadPath;
@@ -758,7 +782,7 @@ namespace ACE.Database
             Console.Write(Environment.NewLine + $"{databaseName} Loading {sqlFile}!..");
             log.Debug($"Reading {sqlFile} and executing against {databaseName}");
             // open file into string
-            string sqlInputFile = File.ReadAllText(sqlFile);
+            string sqlInputFile = "SHOW WARNINGS;\n" + File.ReadAllText(sqlFile);
             if (!DefaultDatabaseNames.Contains(databaseName))
             {
                 var dbMatch = DefaultDatabaseNames.Any(sqlInputFile.Contains);
