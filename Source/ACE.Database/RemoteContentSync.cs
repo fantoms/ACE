@@ -785,9 +785,11 @@ namespace ACE.Database
             if (!DefaultDatabaseNames.Contains(databaseName))
             {
                 var dbMatch = DefaultDatabaseNames.Any(sqlInputFile.Contains);
+                // TODO: Use match instead of wiping all names
                 if (DefaultDatabaseNames.Any(sqlInputFile.Contains))
                 {
-                    // Default Detabase should be ace_world:
+                    sqlInputFile = sqlInputFile.Replace(DefaultDatabaseNames[0], databaseName);
+                    sqlInputFile = sqlInputFile.Replace(DefaultDatabaseNames[1], databaseName);
                     sqlInputFile = sqlInputFile.Replace(DefaultDatabaseNames[2], databaseName);
                 }
             }
