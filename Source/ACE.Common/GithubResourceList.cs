@@ -13,6 +13,6 @@ namespace ACE.Common
     {
         public string DefaultDatabaseName { get; set; }
         public string ConfigDatabaseName { get; set; }
-        public List<GithubResource> Downloads { get; set; }
+        public List<GithubResource> Downloads { get; set; } = new List<GithubResource>();
     }
 }

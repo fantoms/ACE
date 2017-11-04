@@ -293,6 +293,24 @@ namespace ACE.Database
             InitializePreparedStatements();
         }
 
+        public void ResetConnectionString(string host, uint port, string user, string password, string database, bool autoReconnect = true)
+        {
+            var connectionBuilder = new MySqlConnectionStringBuilder()
+            {
+                Server = host,
+                Port = port,
+                UserID = user,
+                Password = password,
+                Database = database,
+                IgnorePrepare = false,
+                Pooling = true,
+                AllowUserVariables = true,
+                AllowZeroDateTime = true
+            };
+
+            connectionString = connectionBuilder.ToString();
+        }
+
         public DatabaseTransaction BeginTransaction() { return new DatabaseTransaction(this); }
 
         protected virtual void InitializePreparedStatements() { }
@@ -1211,12 +1229,7 @@ namespace ACE.Database
         /// <remarks>This function needs to be converted to common ACE functions.</remarks>
         private void RunQuery(string query, string databaseName)
         {
-            var dbConnectionString = "";
-            if (databaseName.Length == 0)
-                dbConnectionString = connectionString.Replace("database=ace_world;", string.Empty);
-            else
-                dbConnectionString = connectionString;
-            using (MySqlConnection connection = new MySqlConnection(dbConnectionString))
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
             using (MySqlCommand command = connection.CreateCommand())
             {
                 connection.Open();
@@ -1232,11 +1245,6 @@ namespace ACE.Database
             {
                 connection.Open();
                 MySqlScript query = new MySqlScript(connection, script);
-                //// TODO: Regex capture actual delimter, instead of forcing "$$";
-                //if (script.Contains("DELIMITER"))
-                //{
-                //    query.Delimiter = "$$";
-                //}
                 query.Error += Query_Error;
                 query.ScriptCompleted += Query_ScriptCompleted;
                 query.StatementExecuted += Query_StatementExecuted;

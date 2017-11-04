@@ -24,14 +24,14 @@ namespace ACE.Database
     {
         private static ILog log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
-        private static WorldDatabase WorldDb { get; set; }
+        private static Database CurrentDb { get; set; }
 
         public static bool RedeploymentActive { get; private set; } = false;
 
         /// <summary>
         /// External user agent used when connecting to the github Api, or another location.
         /// </summary>
-        private static string ApiUserAgent { get; set; } = "ACEmulator.Api";
+        private static string ApiUserAgent { get; set; } = "ACEmulator";
 
         /// <summary>
         /// Url to download the latest version of ACE-World.
@@ -83,14 +83,38 @@ namespace ACE.Database
         /// </summary>
         private static readonly ReadOnlyCollection<string> DefaultDatabaseNames = new ReadOnlyCollection<string>(new[] { "ace_auth", "ace_shard", "ace_world" });
 
+        private static GithubResourceList AuthDownloads { get; set; } = new GithubResourceList();
+        private static GithubResourceList ShardDownloads { get; set; } = new GithubResourceList();
+        private static GithubResourceList WorldDownloads { get; set; } = new GithubResourceList();
+
         public static void Initialize()
         {
-            WorldDb = new WorldDatabase();
-            WorldDb.Initialize(ConfigManager.Config.MySql.World.Host,
+            CurrentDb = new Database();
+            CurrentDb.Initialize(ConfigManager.Config.MySql.World.Host,
                           ConfigManager.Config.MySql.World.Port,
                           ConfigManager.Config.MySql.World.Username,
                           ConfigManager.Config.MySql.World.Password,
-                          ConfigManager.Config.MySql.World.Database, false);
+                          ConfigManager.Config.MySql.World.Database, 
+                          false);
+            AuthDownloads.DefaultDatabaseName = DefaultDatabaseNames[0];
+            AuthDownloads.ConfigDatabaseName = ConfigManager.Config.MySql.Authentication.Database;
+            ShardDownloads.DefaultDatabaseName = DefaultDatabaseNames[1];
+            ShardDownloads.ConfigDatabaseName = ConfigManager.Config.MySql.Shard.Database;
+            WorldDownloads.DefaultDatabaseName = DefaultDatabaseNames[2];
+            WorldDownloads.ConfigDatabaseName = ConfigManager.Config.MySql.World.Database;
+        }
+
+        /// <summary>
+        /// Changes the database.
+        /// </summary>
+        private static void ResetDatabaseConnection(string newDatabase)
+        {
+            CurrentDb.ResetConnectionString(ConfigManager.Config.MySql.World.Host,
+                          ConfigManager.Config.MySql.World.Port,
+                          ConfigManager.Config.MySql.World.Username,
+                          ConfigManager.Config.MySql.World.Password, 
+                          newDatabase, 
+                          false);
         }
 
         /// <summary>
@@ -133,9 +157,10 @@ namespace ACE.Database
                 w.Headers.Add("User-Agent", ApiUserAgent);
                 try
                 {
+
                     result = w.DownloadString(updateUrl);
                 }
-                catch
+                catch 
                 {
                     return null;
                 }
@@ -496,36 +521,37 @@ namespace ACE.Database
 
         private static void ResetDatabase(string databaseName)
         {
+            ResetDatabaseConnection(string.Empty);
             // Delete Database, to clear everything including stored procs and views.
-            var dropResult = WorldDb.DropDatabase(databaseName);
+            var dropResult = CurrentDb.DropDatabase(databaseName);
             if (dropResult != null)
             {
                 log.Debug($"Error dropping database: {dropResult}");
             }
 
             // Create Database
-            var createResult = WorldDb.CreateDatabase(databaseName);
+            var createResult = CurrentDb.CreateDatabase(databaseName);
             if (createResult != null)
             {
                 log.Debug($"Error dropping database: {createResult}");
             }
         }
 
-        private static void parseDownloads(List<GithubResource> auth, List<GithubResource> shard, List<GithubResource> world, List<GithubResource> list)
+        private static void parseDownloads(List<GithubResource> list)
         {
             foreach (var download in list)
             {
                 if (download.DatabaseName == DefaultDatabaseNames[0])
                 {
-                    auth.Add(download);
+                    AuthDownloads.Downloads.Add(download);
                 }
                 else if (download.DatabaseName == DefaultDatabaseNames[1])
                 {
-                    shard.Add(download);
+                    ShardDownloads.Downloads.Add(download);
                 }
                 else if (download.DatabaseName == DefaultDatabaseNames[2])
                 {
-                    world.Add(download);
+                    WorldDownloads.Downloads.Add(download);
                 }
             }
         }
@@ -548,7 +574,6 @@ namespace ACE.Database
             // Determine if the config settings appear valid:
             if (ConfigManager.Config.MySql.World.Database?.Length > 0 && ConfigManager.Config.ContentServer.LocalDataPath?.Length > 0)
             {
-                RedeploymentActive = true;
                 // Check the data path and create if needed.
                 var localDataPath = ConfigManager.Config.ContentServer.LocalDataPath;
                 if (CheckLocalDataPath(localDataPath))
@@ -564,19 +589,17 @@ namespace ACE.Database
                         log.Debug("Downloading ACE-World Archive.");
                         RetreieveWorldData();
 
-                        Dictionary<string, GithubResourceList> resources = new Dictionary<string, GithubResourceList>();
+                        List<GithubResourceList> resources = new List<GithubResourceList>();
 
-                        resources.Add(DefaultDatabaseNames[0], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[0], ConfigDatabaseName = ConfigManager.Config.MySql.Authentication.Database, Downloads = new List<GithubResource>() });
-                        resources.Add(DefaultDatabaseNames[1], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[1], ConfigDatabaseName = ConfigManager.Config.MySql.Shard.Database, Downloads = new List<GithubResource>() });
-                        resources.Add(DefaultDatabaseNames[2], new GithubResourceList() { DefaultDatabaseName = DefaultDatabaseNames[2], ConfigDatabaseName = ConfigManager.Config.MySql.World.Database, Downloads = new List<GithubResource>() });
+                        parseDownloads(DatabaseFiles);
 
-                        parseDownloads(resources[DefaultDatabaseNames[0]].Downloads, resources[DefaultDatabaseNames[0]].Downloads, resources[DefaultDatabaseNames[0]].Downloads, DatabaseFiles);
+                        resources.Add(AuthDownloads);
+                        resources.Add(ShardDownloads);
+                        resources.Add(WorldDownloads);
 
-                        foreach (var resource in resources.Values)
+                        foreach (var resource in resources)
                         {
                             if (resource.Downloads.Count == 0) continue;
-                            // Delete and receate the database
-                            ResetDatabase(resource.ConfigDatabaseName);
 
                             var baseFile = string.Empty;
                             List<string> updates = new List<string>();
@@ -594,11 +617,11 @@ namespace ACE.Database
                                 }
                             }
 
-                            // Grab the archive folder path
-                            var worldArchivePath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WorldDataPath, WorldGithubFilename));
-
                             try
                             {
+                                // Delete and receate the database
+                                ResetDatabase(resource.ConfigDatabaseName);
+
                                 // First sequence, load the world base
                                 if (File.Exists(baseFile))
                                     ReadAndLoadScript(baseFile, resource.ConfigDatabaseName);
@@ -612,6 +635,8 @@ namespace ACE.Database
                                 // Second, if this is the world database, we will load ACE-World
                                 if (resource.DefaultDatabaseName == DefaultDatabaseNames[2])
                                 {
+                                    // Grab the archive folder path
+                                    //var worldArchivePath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WorldDataPath, WorldGithubFilename));
                                     var worldDataPath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WorldDataPath));
                                     var files = from file in Directory.EnumerateFiles(worldDataPath) where !file.Contains(".txt") select new { File = file };
                                     if (files.Count() > 0)
@@ -654,7 +679,6 @@ namespace ACE.Database
                     log.Debug(couldNotDownload);
                     return couldNotDownload;
                 }
-                RedeploymentActive = false;
                 var invalidDownloadPath = "Invalid Download path.";
                 log.Debug(invalidDownloadPath);
                 return invalidDownloadPath;
@@ -697,15 +721,18 @@ namespace ACE.Database
 
                     var databaseName = ConfigManager.Config.MySql.World.Database;
 
+                    // Drop out of databases to perform delete and creation
+                    ResetDatabaseConnection(string.Empty);
+
                     // Delete Database, to clear everything including stored procs and views.
-                    var dropResult = WorldDb.DropDatabase(databaseName);
+                    var dropResult = CurrentDb.DropDatabase(databaseName);
                     if (dropResult != null)
                     {
                         log.Debug($"Error dropping database: {dropResult}");
                     }
 
                     // Create Database
-                    var createResult = WorldDb.CreateDatabase(databaseName);
+                    var createResult = CurrentDb.CreateDatabase(databaseName);
                     if (createResult != null)
                     {
                         log.Debug($"Error dropping database: {createResult}");
@@ -781,19 +808,15 @@ namespace ACE.Database
             Console.Write(Environment.NewLine + $"{databaseName} Loading {sqlFile}!..");
             log.Debug($"Reading {sqlFile} and executing against {databaseName}");
             // open file into string
-            string sqlInputFile = "SHOW WARNINGS;\n" + File.ReadAllText(sqlFile);
+            string sqlInputFile = File.ReadAllText(sqlFile);
             if (!DefaultDatabaseNames.Contains(databaseName))
             {
-                var dbMatch = DefaultDatabaseNames.Any(sqlInputFile.Contains);
-                // TODO: Use match instead of wiping all names
-                if (DefaultDatabaseNames.Any(sqlInputFile.Contains))
-                {
                     sqlInputFile = sqlInputFile.Replace(DefaultDatabaseNames[0], databaseName);
                     sqlInputFile = sqlInputFile.Replace(DefaultDatabaseNames[1], databaseName);
                     sqlInputFile = sqlInputFile.Replace(DefaultDatabaseNames[2], databaseName);
-                }
             }
-            return WorldDb.ExecuteSqlQueryOrScript(sqlInputFile, databaseName, true);
+            ResetDatabaseConnection(databaseName);
+            return CurrentDb.ExecuteSqlQueryOrScript(sqlInputFile, databaseName, true);
         }
 
         /// <summary>
