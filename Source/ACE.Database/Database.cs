@@ -1232,11 +1232,11 @@ namespace ACE.Database
             {
                 connection.Open();
                 MySqlScript query = new MySqlScript(connection, script);
-                // TODO: Regex capture actual delimter, instead of forcing "$$";
-                if (script.Contains("DELIMITER"))
-                {
-                    query.Delimiter = "$$";
-                }
+                //// TODO: Regex capture actual delimter, instead of forcing "$$";
+                //if (script.Contains("DELIMITER"))
+                //{
+                //    query.Delimiter = "$$";
+                //}
                 query.Error += Query_Error;
                 query.ScriptCompleted += Query_ScriptCompleted;
                 query.StatementExecuted += Query_StatementExecuted;
@@ -1247,7 +1247,7 @@ namespace ACE.Database
 
         private void Query_StatementExecuted(object sender, MySqlScriptEventArgs args)
         {
-            Console.Write(".");
+            Console.Write($"{args.Position}.");
         }
 
         private void Query_ScriptCompleted(object sender, EventArgs e)
@@ -1257,7 +1257,7 @@ namespace ACE.Database
 
         private void Query_Error(object sender, MySqlScriptErrorEventArgs args)
         {
-            Console.WriteLine("Script encountered an error!");
+            Console.WriteLine($"Script encountered an error! {args.Exception.Message}");
         }
 
         /// <summary>

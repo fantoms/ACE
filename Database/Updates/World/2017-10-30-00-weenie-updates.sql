@@ -1,6 +1,7 @@
-
 DROP TABLE IF EXISTS `ace_object_properties_skill`;
+
 DROP VIEW IF EXISTS `vw_ace_inventory_object`;
+
 DROP VIEW IF EXISTS `vw_ace_wielded_object`;
 
 CREATE TABLE `ace_object_properties_skill` (

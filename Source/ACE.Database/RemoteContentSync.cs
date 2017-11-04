@@ -552,7 +552,7 @@ namespace ACE.Database
                     if (DatabaseFiles?.Count > 0)
                     {
                         log.Debug("Downloading ACE-World Archive.");
-                        //RetreieveWorldData();
+                        RetreieveWorldData();
 
                         Dictionary<string, GithubResource> resources = new Dictionary<string, GithubResource>();
 
@@ -594,7 +594,15 @@ namespace ACE.Database
                                 // Second, if this is the world database, we will load ACE-World
                                 if (resource.DatabaseName == DefaultDatabaseNames[2])
                                 {
-                                    ReadAndLoadScript(worldArchivePath, resource.DatabaseName);
+                                    var worldDataPath = Path.GetFullPath(Path.Combine(ConfigManager.Config.ContentServer.LocalDataPath, WorldDataPath));
+                                    var files = from file in Directory.EnumerateFiles(worldDataPath) where !file.Contains(".txt") select new { File = file };
+                                    if (files.Count() > 0)
+                                    {
+                                        foreach (var file in files)
+                                        {
+                                            ReadAndLoadScript(file.File, resource.DatabaseName);
+                                        }
+                                    }
                                 }
 
                                 // Last, 
@@ -616,9 +624,9 @@ namespace ACE.Database
                                 log.Debug(errorMessage);
                                 return errorMessage;
                             }
-                            // Success
-                            return null;
                         }
+                        // Success
+                        return null;
                     }
                     var couldNotDownload = "Troubles downloading content, please wait one hour or investigate the API call errors.";
                     log.Debug(couldNotDownload);
@@ -753,6 +761,7 @@ namespace ACE.Database
             string sqlInputFile = File.ReadAllText(sqlFile);
             if (!DefaultDatabaseNames.Contains(databaseName))
             {
+                var dbMatch = DefaultDatabaseNames.Any(sqlInputFile.Contains);
                 if (DefaultDatabaseNames.Any(sqlInputFile.Contains))
                 {
                     // Default Detabase should be ace_world:
