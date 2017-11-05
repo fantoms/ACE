@@ -1201,9 +1201,9 @@ namespace ACE.Database
                 // get the number from the inner exception
                 if (ex.InnerException != null)
                 {
-                    var MySqlErrorNumber = GetExceptionNumber(ex);
+                    var mySqlErrorNumber = GetExceptionNumber(ex);
                     // create a short error message for the console log / label
-                    errMsg += $"{MySqlErrorNumber} : {ex.InnerException.Message}";
+                    errMsg += $"{mySqlErrorNumber} : {ex.InnerException.Message}";
                 }
                 else
                 {
